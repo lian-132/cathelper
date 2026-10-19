@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>猫娘助手 · 控制台</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  
+  <header class="topbar">
+    <div class="tb-left">
+      <span class="tb-title">猫娘助手</span>
+      <span class="tb-sub" id="subtitle">TIM 增强 · 控制台</span>
+    </div>
+    <button class="icon-btn" id="btnRefresh" aria-label="刷新">
+      <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+    </button>
+  </header>
+
+  
+  <section class="hero card tilt">
+    <img class="hero-art" src="assets/hero.png" alt="" onerror="this.style.display='none'">
+    <div class="hero-overlay">
+      <div class="hero-tag" id="statusTag">未启用</div>
+      <div class="hero-title">猫娘化引擎</div>
+      <div class="hero-desc" id="statusDesc">模块已就绪，等待开启</div>
+      <div class="hero-dots"><i></i><i></i><i></i></div>
+    </div>
+  </section>
+
+  
+  <section class="grid2">
+    <button class="pill card press" data-key="master">
+      <span class="pill-ico">
+        <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V18a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.3A7 7 0 0 0 12 2zm-2 18h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1z"/></svg>
+      </span>
+      <span class="pill-text">
+        <b>总开关</b>
+        <em id="masterState">已关闭</em>
+      </span>
+    </button>
+    <button class="pill card press" data-key="revoke">
+      <span class="pill-ico">
+        <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>
+      </span>
+      <span class="pill-text">
+        <b>防撤回</b>
+        <em id="revokeState">已关闭</em>
+      </span>
+    </button>
+  </section>
+
+  
+  <section class="grid2-uneven">
+    
+    <div class="stack">
+      <button class="wide card press" data-key="cat">
+        <img class="wide-art" src="assets/art1.png" alt="" onerror="this.style.display='none'">
+        <span class="wide-label">猫娘化</span>
+        <span class="wide-state" id="catState">关</span>
+      </button>
+      <button class="wide card press" data-key="tts">
+        <img class="wide-art" src="assets/art2.png" alt="" onerror="this.style.display='none'">
+        <span class="wide-label">语音转文字</span>
+        <span class="wide-state" id="ttsState">关</span>
+      </button>
+    </div>
+    
+    <button class="big card press" data-key="auto">
+      <img class="big-art" src="assets/art3.png" alt="" onerror="this.style.display='none'">
+      <span class="big-dot"></span>
+      <span class="big-label">自动转换</span>
+      <span class="big-state" id="autoState">关</span>
+    </button>
+  </section>
+
+
+  
+  <section class="about card">
+    <div class="about-head">
+      <span class="about-title">关于</span>
+      <span class="about-badge">v0.1 原型</span>
+    </div>
+    <div class="about-row">
+      <span>模块状态</span><b id="aboutModule">已激活</b>
+    </div>
+    <div class="about-row">
+      <span>作用域</span><b>TIM</b>
+    </div>
+    <div class="about-row">
+      <span>框架</span><b id="aboutFramework">LSPosed 2.2.1</b>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
