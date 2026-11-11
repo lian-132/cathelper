@@ -115,101 +115,24 @@ app/
 
 ## 权限
 
-| 权限 | 用途 |
-|---|---|
-| `INTERNET` | 网络请求（各功能都要） |
-| `SYSTEM_ALERT_WINDOW` | 悬浮球、悬浮面板 |
-| `POST_NOTIFICATIONS` | 下载进度、前台服务通知 |
-| `FOREGROUND_SERVICE` | 网盘下载、音乐播放常驻 |
-| `FOREGROUND_SERVICE_DATA_SYNC` | 网盘分片下载 |
-| `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | 后台播放 |
-| `WAKE_LOCK` | 下载/播放时保持唤醒 |
-| `WRITE_EXTERNAL_STORAGE`（仅 Android 9 及以下） | 保存下载文件 |
-| `REQUEST_INSTALL_PACKAGES` | 安装更新包 |
+`INTERNET`、`SYSTEM_ALERT_WINDOW`、`POST_NOTIFICATIONS`、`FOREGROUND_SERVICE`（含 DATA_SYNC / MEDIA_PLAYBACK）、`WAKE_LOCK`、`WRITE_EXTERNAL_STORAGE`（仅 Android 9 及以下）、`REQUEST_INSTALL_PACKAGES`。
 
-模块不含开机自启、不读通讯录、不读短信、不申请定位、不申请无障碍权限。
-
----
+不读通讯录、不读短信、不申请定位、不申请无障碍。
 
 ## 对外网络请求
 
-代码里硬编码的外部域名共 **71 个**，按用途分：
+外部域名共 71 个，按用途分六类：
 
-### 腾讯自家（QQ / TIM 相关）
+| 类别 | 用途 |
+|---|---|
+| 腾讯自有 | 头像、表情、聊天图片 |
+| 内容平台（B站 / 抖音 / 快手 / 小红书 / Pixiv） | 分享链接解析成直链 |
+| 音乐（网易云 / 酷狗 / 酷我） | 搜歌、取播放地址 |
+| 网盘（百度 / 夸克 / UC / 迅雷 / 139 / 123 / 蓝奏 / 115） | 目录、分享、下载 |
+| AI（OpenAI / DeepSeek / Brave / Tavily / Serper） | 需自填 Key，不填不发请求 |
+| 图床与语音（freeimage / uguu / 百度 TTS） | 图片外链、文字转语音 |
 
-```
-*.qlogo.cn  *.qpic.cn  *.gtimg.cn  multimedia.nt.qq.com.cn
-mqq.tenpay.com  downv6.qq.com  channel.qpic.cn  y.qq.com
-```
-
-用途：头像、表情、聊天图片、音乐卡封面等展示资源。
-
-### 内容平台解析
-
-```
-api.bilibili.com  passport.bilibili.com  b23.tv
-aweme.snssdk.com  m.douyin.com
-www.kuaishou.com  www.xiaohongshu.com  www.pixiv.net
-```
-
-用途：把分享链接解析成可播放的直链。
-
-### 音乐
-
-```
-music.163.com  p1.music.126.net  antiserver.kuwo.cn
-music-api.gdstudio.xyz  y.qq.com
-```
-
-用途：搜歌、取播放地址、封面。
-
-### 网盘
-
-```
-pan.baidu.com  d.pcs.baidu.com  yun.baidu.com
-pan.quark.cn  drive-pc.quark.cn
-drive.uc.cn  pc-api.uc.cn
-api-pan.xunlei.com  xluser-ssl.xunlei.com
-yun.139.com  yun.123pan.cn  www.guangyapan.com
-www.lanzou.com  www.ilanzou.com  pc.woozooo.com 115.com
-```
-
-用途：登录态校验、目录列表、创建分享、分片下载。**这些请求会带上你自己在该平台的 Cookie**（仅本地存储，不上传到第三方）。
-
-### AI 服务（可选，需自己填 Key）
-
-```
-api.openai.com  api.deepseek.com
-api.search.brave.com  api.tavily.com  google.serper.dev
-```
-
-用途：猫娘化回复、联网搜索。**不填 Key 就不发请求。**
-
-### 图床与语音合成
-
-```
-freeimage.host  uguu.se
-fanyi.baidu.com/gettts
-```
-
-用途：图片外链（发图用）、文字转语音。
-
----
-
-## 会离开设备的内容
-
-需要说明白，以下几处**会把你输入的内容发给第三方服务**：
-
-| 功能 | 发出去什么 | 发给谁 |
-|---|---|---|
-| 文字转语音 | 待转换的文字 | 百度翻译 TTS |
-| AI 回复 | 消息内容 + 上下文 | 你配置的 AI 服务商 |
-| 联网搜索 | 搜索关键词 | Brave / Tavily / Serper |
-| 图片外链 | 图片本体 | freeimage.host / uguu.se |
-| 网盘操作 | Cookie + 文件信息 | 对应网盘官方接口 |
-| 视频解析 | 分享链接 | 平台官方接口 |
-
-**不开这些功能就不会有任何内容离开设备。**
+只有主动使用这些功能时，相应内容才会发给对应服务；不开则不会有内容离开设备。
 
 代码里没有埋点、没有崩溃上报、没有统计 SDK。
 
