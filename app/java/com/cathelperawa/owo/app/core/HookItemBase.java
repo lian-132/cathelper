@@ -10,9 +10,9 @@ import de.robv.android.xposed.XC_MethodHook;
 public abstract class HookItemBase {
 
     protected Context ctx;
-
+    
     protected ClassLoader cl;
-
+    
     private final List<Object> handles = new ArrayList<Object>();
 
     private final FeatureReport report = new FeatureReport();
@@ -22,6 +22,9 @@ public abstract class HookItemBase {
         this.cl = cl;
     }
 
+    
+
+    
     public final FeatureReport report() {
         return report;
     }
@@ -52,13 +55,21 @@ public abstract class HookItemBase {
         report.setFireHint(text);
     }
 
+    
+
+    
+
+    
+
+    
+
     private final SelfCheckResult selfCheck = new SelfCheckResult();
 
     private final java.util.concurrent.atomic.AtomicBoolean checking =
             new java.util.concurrent.atomic.AtomicBoolean(false);
 
     protected void check(SelfCheckResult.Checker c) {
-
+        
     }
 
     public final SelfCheckResult selfCheck() {
@@ -105,6 +116,11 @@ public abstract class HookItemBase {
         report.fire(point, n);
     }
 
+    private String displayName() {
+        HookItem m = meta();
+        return m == null ? getClass().getSimpleName() : m.name();
+    }
+
     public final String featureName() {
         return displayName();
     }
@@ -120,44 +136,58 @@ public abstract class HookItemBase {
         }
     }
 
+    
+
+    
+    public String[] dependsOn() {
+        DependsOn d = getClass().getAnnotation(DependsOn.class);
+        return d == null ? EMPTY_DEP : d.value();
+    }
+
+    public final String deepProblem() {
+        return deepProblem(new java.util.HashSet<String>(), 0);
+    }
+
+    private String deepProblem(java.util.Set<String> seen, int depth) {
+        String key = getClass().getName();
+        if (!seen.add(key)) return null;              
+        if (depth > 6) return null;                   
+
+        if (runtimeErrorCount() > 0) {
+            return "自身运行期错误 " + runtimeErrorCount() + " 次";
+        }
+        FeatureReport r = report();
+        if (r != null && r.status() == FeatureStatus.FAILED) {
+            return "自身失败：" + r.reason();
+        }
+
+        for (String dep : dependsOn()) {
+            if (dep == null || dep.isEmpty()) continue;
+
+            String probe = HealthRegistry.check(dep);
+            if (probe != null) return "依赖「" + dep + "」：" + probe;
+
+            HookItemBase child = HookItemFactory.byName(dep);
+            if (child != null && child != this) {
+                String p = ((HookItemBase) child).deepProblem(seen, depth + 1);
+                if (p != null) return "依赖「" + dep + "」：" + p;
+            }
+        }
+        return null;
+    }
+
+    private static final String[] EMPTY_DEP = new String[0];
+
     public final int runtimeErrorCount() {
         return runtimeErrors.get();
     }
 
-    public final HookItem rawMeta() {
+    public final HookItem meta() {
         return getClass().getAnnotation(HookItem.class);
     }
 
-    public final String displayName() {
-        String n = stat("META_name");
-        if (n != null && n.length() > 0) return n;
-        HookItem m = rawMeta();
-        return m == null || m.name().length() == 0 ? getClass().getSimpleName() : m.name();
-    }
-
-    public final String displayPath() {
-        String p = stat("META_path");
-        if (p != null && p.length() > 0) return p;
-        HookItem m = rawMeta();
-        return m == null ? "" : m.path();
-    }
-
-    public final String displayDesc() {
-        String d = stat("META_description");
-        if (d != null && d.length() > 0) return d;
-        HookItem m = rawMeta();
-        return m == null ? "" : m.description();
-    }
-
-    private String stat(String field) {
-        try {
-            java.lang.reflect.Field f = getClass().getField(field);
-            Object v = f.get(null);
-            return v instanceof String ? (String) v : null;
-        } catch (Throwable t) {
-            return null;
-        }
-    }
+    
+    public boolean mainProcessOnly() { return false; }
 
     public String switchKey() {
         return getClass().getName();
@@ -173,6 +203,9 @@ public abstract class HookItemBase {
 
     public abstract void entry(ClassLoader cl);
 
+    
+
+    
     protected final Object keep(Object handle) {
         if (handle != null) handles.add(handle);
         return handle;
@@ -188,15 +221,17 @@ public abstract class HookItemBase {
         handles.clear();
     }
 
+    
+
     protected final Object hookBefore(java.lang.reflect.Member m, HookApi.Action a) {
         Object h = keep(HookApi.before(m, a, this));
-        if (h != null) report.hit();
+        if (h != null) report.hit();      
         return h;
     }
 
     protected final Object hookAfter(java.lang.reflect.Member m, HookApi.Action a) {
         Object h = keep(HookApi.after(m, a, this));
-        if (h != null) report.hit();
+        if (h != null) report.hit();      
         return h;
     }
 

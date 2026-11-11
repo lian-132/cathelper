@@ -18,16 +18,18 @@ public final class UiKit {
 
     private UiKit() {}
 
+    
     public static int dp(Context c, float v) {
         return (int) (v * c.getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    
     public static TextView text(Context c, String s, float size, int color,
                                 boolean bold, int bottomPad) {
         TextView t = new TextView(c);
         t.setText(s);
         t.setTextSize(size);
-        t.setTextColor(color);
+        t.setTextColor(Theme.c(color));
         if (bold) t.setTypeface(Typeface.DEFAULT_BOLD, Typeface.BOLD);
         t.setPadding(0, 0, 0, bottomPad);
         return t;
@@ -37,10 +39,10 @@ public final class UiKit {
         TextView t = new TextView(c);
         t.setText(s);
         t.setTextSize(11);
-        t.setTextColor(color);
+        t.setTextColor(Theme.c(color));
         t.setTypeface(Typeface.DEFAULT_BOLD, Typeface.BOLD);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(0xEEFFFFFF);
+        g.setColor(Theme.c(0xEEFFFFFF));
         g.setCornerRadius(dp(c, 12));
         t.setBackgroundDrawable(g);
         t.setPadding(dp(c, 10), dp(c, 3), dp(c, 10), dp(c, 3));
@@ -64,11 +66,45 @@ public final class UiKit {
         return et;
     }
 
+    public static void innerScroll(final EditText et) {
+        if (et == null) return;
+        
+        try {
+            et.setVerticalScrollBarEnabled(false);
+            et.setHorizontalScrollBarEnabled(false);
+        } catch (Throwable ignore) {
+        }
+
+        
+        et.setOnTouchListener(new View.OnTouchListener() {
+            @Override public boolean onTouch(View v, android.view.MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        if (v.getParent() != null) {
+                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                        }
+                        break;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        if (v.getParent() != null) {
+                            v.getParent().requestDisallowInterceptTouchEvent(false);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                return false;   
+            }
+        });
+    }
+
+    
     public static LinearLayout whiteCard(Context c, int radius, int color) {
         LinearLayout l = new LinearLayout(c);
         l.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
+        g.setColor(Theme.c(color));
         g.setCornerRadius(radius);
         g.setStroke(dp(c, 1), 0x66FFFFFF);
         l.setBackgroundDrawable(g);
@@ -79,7 +115,7 @@ public final class UiKit {
     public static FrameLayout whiteFrame(Context c, int radius, int color) {
         FrameLayout f = new FrameLayout(c);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
+        g.setColor(Theme.c(color));
         g.setCornerRadius(radius);
         g.setStroke(dp(c, 1), 0x66FFFFFF);
         f.setBackgroundDrawable(g);
@@ -90,10 +126,11 @@ public final class UiKit {
     public static GradientDrawable circleBg(int color, int radius) {
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
-        g.setColor(color);
+        g.setColor(Theme.c(color));
         return g;
     }
 
+    
     public static LinearLayout.LayoutParams matchWrap(Context c, int bottomMargin) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -113,6 +150,7 @@ public final class UiKit {
         return p;
     }
 
+    
     public static void press(final View v) {
         v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(85)
                 .withEndAction(new Runnable() {
@@ -123,9 +161,19 @@ public final class UiKit {
                 }).start();
     }
 
-    public static void spin(View v) {
-        v.animate().rotationBy(360f).setDuration(450)
-                .setInterpolator(new DecelerateInterpolator()).start();
+    public static void spin(final View v) {
+        if (v == null) return;
+        try {
+            v.animate().cancel();
+            if (v.getWidth() > 0 && v.getHeight() > 0) {
+                v.setPivotX(v.getWidth() / 2f);
+                v.setPivotY(v.getHeight() / 2f);
+            }
+            v.setRotation(0f);
+            v.animate().rotationBy(360f).setDuration(450)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        } catch (Throwable ignore) {
+        }
     }
 
     public static void switchHero(final ImageView iv, final String[] names, final int[] cur,
@@ -162,7 +210,21 @@ public final class UiKit {
         return tv;
     }
 
-    public static void catToast(Context c, String msg) {
+    
+    public static void catToast(final Context c, final String msg) {
+
+        if (c != null && android.os.Looper.myLooper() == null) {
+            try {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(
+                        new Runnable() {
+                            @Override public void run() {
+                                catToast(c, msg);
+                            }
+                        });
+                return;
+            } catch (Throwable ignore) {
+            }
+        }
         try {
             Toast t = new Toast(c);
             LinearLayout box = new LinearLayout(c);
@@ -219,7 +281,7 @@ public final class UiKit {
                 int trackH = track.getHeight();
                 if (content == null || viewH <= 0 || trackH <= 0) return;
                 int contentH = content.getHeight();
-                if (contentH <= viewH) {
+                if (contentH <= viewH) {            
                     track.setVisibility(View.INVISIBLE);
                     thumb.setAlpha(0f);
                     return;
@@ -256,6 +318,6 @@ public final class UiKit {
                 new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
             @Override public void onGlobalLayout() { h.post(update); }
         });
-        h.postDelayed(update, 80);
+        h.postDelayed(update, 80);      
     }
 }

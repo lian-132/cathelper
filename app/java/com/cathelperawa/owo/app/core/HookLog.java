@@ -11,7 +11,7 @@ import java.util.Map;
 
 public final class HookLog {
 
-    private static final String TAG = "猫娘助手";
+    private static final String TAG = "CatHelper";
     private static final int MAX_BUFFER = 300;
 
     private static final Map<String, String> BUFFER =
@@ -22,10 +22,42 @@ public final class HookLog {
                 }
             });
 
-    private static final Map<String, Long> LAST = new java.util.HashMap<String, Long>();
+    private static final Map<String, Long> LAST =
+            new java.util.concurrent.ConcurrentHashMap<String, Long>();
 
-    private static final SimpleDateFormat FMT =
-            new SimpleDateFormat("HH:mm:ss", Locale.US);
+    private static final ThreadLocal<SimpleDateFormat> FMT =
+            new ThreadLocal<SimpleDateFormat>() {
+                @Override protected SimpleDateFormat initialValue() {
+                    return new SimpleDateFormat("HH:mm:ss", Locale.US);
+                }
+            };
+
+    
+
+    private static final Object GATE = new Object();
+    private static long gateWindow = 0L;
+    private static int gateCount = 0;
+    private static final int GATE_PER_SEC = 30;
+    private static final Map<String, Long> GATE_DUP =
+            new java.util.concurrent.ConcurrentHashMap<String, Long>();
+
+    private static boolean gateAllow(String level, String msg) {
+        if ("W".equals(level) || "E".equals(level)) return true;
+        long now = System.currentTimeMillis();
+        Long dup = GATE_DUP.get(msg);
+        if (dup != null && now - dup < 300L) return false;
+        GATE_DUP.put(msg, now);
+        if (GATE_DUP.size() > 500) GATE_DUP.clear();
+        synchronized (GATE) {
+            if (now - gateWindow >= 1000L) {
+                gateWindow = now;
+                gateCount = 0;
+            }
+            if (gateCount >= GATE_PER_SEC) return false;
+            gateCount++;
+            return true;
+        }
+    }
 
     private HookLog() {}
 
@@ -45,26 +77,35 @@ public final class HookLog {
         String fingerprint = msg + " | " + firstFrame(t);
         long now = System.currentTimeMillis();
         Long last = LAST.get(fingerprint);
-        if (last != null && now - last < 1000) return;
+        if (last != null && now - last < 1000) return;   
         LAST.put(fingerprint, now);
         record("E", msg + (t == null ? "" : " :: " + t));
     }
 
     private static void record(String level, String msg) {
-        String line = FMT.format(new java.util.Date()) + " [" + level + "] " + msg;
-        try {
-            Log.i(TAG, line);
-        } catch (Throwable ignore) {
+        String line = FMT.get().format(new java.util.Date()) + " [" + level + "] " + msg;
+
+        boolean allow = gateAllow(level, msg);
+        if (allow) {
+            try {
+                Log.i(TAG, line);
+            } catch (Throwable ignore) {
+            }
+            
+            try {
+                de.robv.android.xposed.XposedBridge.log(TAG + " " + line);
+            } catch (Throwable ignore) {
+            }
+            
+            BUFFER.put(System.nanoTime() + "-" + msg.hashCode(), line);
         }
 
+        
+        
+        if (!allow) return;   
         try {
-            de.robv.android.xposed.XposedBridge.log(TAG + " " + line);
-        } catch (Throwable ignore) {
-        }
-        BUFFER.put(System.nanoTime() + "-" + msg.hashCode(), line);
 
-        try {
-            com.cathelperawa.owo.app.util.CatLog.log(
+            com.cathelperawa.owo.app.util.CatLog.enqueue(
                     level.equals("D") ? com.cathelperawa.owo.app.util.CatLog.DEBUG
                     : level.equals("W") ? com.cathelperawa.owo.app.util.CatLog.WARN
                     : level.equals("E") ? com.cathelperawa.owo.app.util.CatLog.ERROR
@@ -86,6 +127,8 @@ public final class HookLog {
         }
         return st[0].toString();
     }
+
+    
 
     public static java.util.List<String> snapshot() {
         synchronized (BUFFER) {

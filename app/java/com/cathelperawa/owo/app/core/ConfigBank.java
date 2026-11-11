@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.core;
 
+import com.cathelperawa.owo.app.core.DataDir;
+
 import android.content.Context;
 
 import java.io.File;
@@ -19,6 +21,9 @@ public final class ConfigBank {
         return d == null ? null : new File(d, SNAPSHOT_NAME);
     }
 
+    
+
+    
     public static final class Result {
         public final File file;
         public final int count;
@@ -37,9 +42,10 @@ public final class ConfigBank {
         if (dir == null) return new Result(null, 0, "找不到放文件的地方…");
         if (!dir.exists() && !dir.mkdirs()) return new Result(null, 0, "放文件的文件夹建不出来，检查下存储权限");
 
+        
         try {
             ModuleCommand.send(ctx, ModuleCommand.CMD_SNAPSHOT_CONFIG);
-            Thread.sleep(500);
+            Thread.sleep(500);      
         } catch (Throwable ignore) {
         }
 
@@ -56,7 +62,7 @@ public final class ConfigBank {
         if (text == null || count == 0) {
             try {
                 ConfigBackup.ExportResult r = ConfigBackup.exportDir(
-                        new File(ctx.getFilesDir(), "cathelper"), BuildInfoVer());
+                        DataDir.global(), BuildInfoVer());
                 text = r.text;
                 count = r.count;
             } catch (Throwable ignore) {
@@ -78,6 +84,9 @@ public final class ConfigBank {
         return new Result(out, count, "导出完成！共 " + count + " 项～");
     }
 
+    
+
+    
     public static Result importText(Context ctx, String text) {
         if (ctx == null) return new Result(null, 0, "环境没准备好，先在 TIM 里开一下控制台");
         if (text == null || text.trim().isEmpty()) {
@@ -118,7 +127,7 @@ public final class ConfigBank {
             String text = readAll(src);
             count = countEntries(text);
             if (count == 0) return new Result(null, 0, "文件里没找到可导入的配置诶");
-
+            
             writeAll(new File(dir, "config-import.txt"), text);
         } catch (Throwable t) {
             return new Result(null, 0, "文件读不进来…" + t);
@@ -169,6 +178,9 @@ public final class ConfigBank {
         }
     }
 
+    
+
+    
     public static int countEntries(String text) {
         if (text == null) return 0;
         int n = 0;

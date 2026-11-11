@@ -16,12 +16,14 @@ public class ModLog {
     }
 
     public static void log(String msg) {
-
+        
         try {
             XposedBridge.log("[" + TAG + "] " + msg);
         } catch (Throwable ignore) {
         }
 
+        
+        
         try {
             com.cathelperawa.owo.app.util.CatLog.i(msg);
         } catch (Throwable ignore) {

@@ -20,6 +20,15 @@ public final class FeatureReport {
 
     private FeatureStatus status = FeatureStatus.UNKNOWN;
 
+    
+
+    
+
+    
+
+    
+
+    
     private final java.util.concurrent.atomic.AtomicInteger fireCount =
             new java.util.concurrent.atomic.AtomicInteger(0);
 
@@ -139,6 +148,11 @@ public final class FeatureReport {
         onFirstFire = r;
     }
 
+    
+
+    
+
+    
     private String fireHint = "";
 
     private boolean instrumented = false;
@@ -171,9 +185,9 @@ public final class FeatureReport {
 
     public String fireSummary() {
         int n = fireCount.get();
-
+        
         if (!instrumented) return "未埋点";
-
+        
         if (n == 0) {
             String h = fireHint();
             return h.length() > 0 ? "尚未触发（" + h + "）" : "尚未触发";
@@ -182,6 +196,9 @@ public final class FeatureReport {
         return "已触发 " + (n / 1000) + "k+ 次";
     }
 
+    
+
+    
     public void begin() {
         beganAt = System.currentTimeMillis();
         endedAt = 0;
@@ -217,9 +234,9 @@ public final class FeatureReport {
 
     public void done() {
         endedAt = System.currentTimeMillis();
-        if (status == FeatureStatus.DISABLED) return;
+        if (status == FeatureStatus.DISABLED) return;   
         if (!problems.isEmpty()) {
-
+            
             status = hitCount == 0 ? FeatureStatus.FAILED : FeatureStatus.PARTIAL;
             return;
         }
@@ -262,6 +279,8 @@ public final class FeatureReport {
     public void setStatus(FeatureStatus s) {
         if (s != null) status = s;
     }
+
+    
 
     public FeatureStatus status() { return status; }
 

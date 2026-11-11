@@ -18,14 +18,15 @@ public final class CatPanel {
 
     public interface OnOk { void run(); }
 
+    
     public static final int C_TITLE = 0xFF43587A;
-
+    
     public static final int C_BODY = 0xFF43587A;
-
+    
     public static final int C_HINT = 0xFF9AAABC;
-
+    
     public static final int C_PINK = 0xFFF07CA8;
-
+    
     public static final int C_BLUE = 0xFF7FA5E6;
 
     public static void show(final Context ctx, final String badge, final String title,
@@ -37,11 +38,11 @@ public final class CatPanel {
 
         a.runOnUiThread(new Runnable() { @Override public void run() {
             try {
-
+                
                 LinearLayout shell = new LinearLayout(a);
                 shell.setOrientation(LinearLayout.VERTICAL);
                 GradientDrawable sg = new GradientDrawable();
-                sg.setColor(0xFDFEFFFF);
+                sg.setColor(0xFDFEFFFF);          
                 sg.setCornerRadius(dp(den, 24));
                 sg.setStroke(dp(den, 1), 0x66C9D6E8);
                 shell.setBackgroundDrawable(sg);
@@ -157,6 +158,9 @@ public final class CatPanel {
         } });
     }
 
+    
+
+    
     public static TextView pillButton(Context c, String label, boolean primary) {
         TextView tv = new TextView(c);
         tv.setText(label);

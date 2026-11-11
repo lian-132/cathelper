@@ -56,9 +56,17 @@ public final class CatLog {
         try {
             de.robv.android.xposed.XposedBridge.log("[" + TAG + "] " + line);
         } catch (Throwable ignore) {
-
+            
         }
 
+        if (!QUEUE.offer(line)) {
+            DROPPED.incrementAndGet();
+        }
+    }
+
+    public static void enqueue(int level, String msg, Throwable t) {
+        if (level < minLevel) return;
+        String line = format(level, msg, t);
         if (!QUEUE.offer(line)) {
             DROPPED.incrementAndGet();
         }
@@ -88,10 +96,10 @@ public final class CatLog {
                     while (true) {
                         try {
                             batch.clear();
-
+                            
                             String first = QUEUE.take();
                             batch.add(first);
-
+                            
                             QUEUE.drainTo(batch, 31);
 
                             long dropped = DROPPED.getAndSet(0);
@@ -104,7 +112,7 @@ public final class CatLog {
                             Thread.currentThread().interrupt();
                             return;
                         } catch (Throwable ignore) {
-
+                            
                         }
                     }
                 }
@@ -117,6 +125,16 @@ public final class CatLog {
     private static void flush(java.util.ArrayList<String> batch) {
         if (batch.isEmpty()) return;
 
+        
+
+        
+
+        
+
+        
+
+        
+        
         try {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < batch.size(); i++) {
@@ -124,7 +142,7 @@ public final class CatLog {
             }
             com.cathelperawa.owo.app.MsgStore.appendLog(sb.toString());
         } catch (Throwable ignore) {
-
+            
         }
 
         final Context ctx = appCtx;
@@ -137,11 +155,11 @@ public final class CatLog {
                 v.put("msg", batch.get(i));
                 arr[i] = v;
             }
-
+            
             ctx.getContentResolver().bulkInsert(
                     Uri.parse("content://com.cathelperawa.owo.app.logs"), arr);
         } catch (Throwable ignore) {
-
+            
         }
     }
 }

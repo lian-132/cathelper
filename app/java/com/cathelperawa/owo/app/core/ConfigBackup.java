@@ -17,6 +17,14 @@ public final class ConfigBackup {
     public static final String META_MODULE_VER = "__module_ver";
     public static final String META_EXPORTED_AT = "__exported_at";
     public static final String META_COUNT = "__count";
+    
+    public static final String META_HOST_VER = "__host_ver";
+    
+    public static final String META_HOST_NAME = "__host_name";
+    
+    public static final String META_PID = "__pid";
+    
+    public static final String META_FEATURES = "__features";
 
     private static final String[] SENSITIVE = {
             "uin", "uid", "token", "cookie", "password", "passwd", "secret",
@@ -25,10 +33,13 @@ public final class ConfigBackup {
 
     private ConfigBackup() {}
 
+    
+
+    
     public static final class ExportResult {
         public final String text;
-        public final int count;
-        public final int skipped;
+        public final int count;          
+        public final int skipped;        
         public ExportResult(String text, int count, int skipped) {
             this.text = text;
             this.count = count;
@@ -37,12 +48,37 @@ public final class ConfigBackup {
     }
 
     public static ExportResult export(Context ctx, int moduleVer) {
-        return exportDir(rootOf(ctx), moduleVer);
+        ExportResult r = exportDir(rootOf(ctx), moduleVer);
+        String extra = hostMeta(ctx);
+        if (extra == null || extra.length() == 0) return r;
+        String text = r.text;
+        int at = text.indexOf(META_EXPORTED_AT);
+        if (at < 0) return r;
+        int eol = text.indexOf('\n', at);
+        if (eol < 0) return r;
+        String merged = text.substring(0, eol + 1) + extra + text.substring(eol + 1);
+        return new ExportResult(merged, r.count, r.skipped);
+    }
+
+    private static String hostMeta(Context ctx) {
+        StringBuilder sb = new StringBuilder(128);
+        try {
+            int code = HostVersion.code(ctx);
+            String name = HostVersion.name(ctx);
+            if (code > 0 || (name != null && name.length() > 0)) {
+                sb.append(META_HOST_VER).append('=').append(code).append('\n');
+                sb.append(META_HOST_NAME).append('=').append(name == null ? "?" : name).append('\n');
+            }
+        } catch (Throwable ignore) { }
+        try {
+            sb.append(META_PID).append('=').append(android.os.Process.myPid()).append('\n');
+        } catch (Throwable ignore) { }
+        return sb.toString();
     }
 
     public static ExportResult exportDir(File filesRoot, int moduleVer) {
         Properties p = loadRaw(filesRoot);
-
+        
         TreeMap<String, String> all = new TreeMap<String, String>();
         for (String name : p.stringPropertyNames()) {
             all.put(name, p.getProperty(name));
@@ -71,6 +107,21 @@ public final class ConfigBackup {
             count++;
         }
         sb.append('\n').append(META_COUNT).append('=').append(count).append('\n');
+        
+        try {
+            int total = com.cathelperawa.owo.app.core.HookItemFactory.all().size();
+            int covered = 0;
+            for (com.cathelperawa.owo.app.core.HookItemBase it
+                    : com.cathelperawa.owo.app.core.HookItemFactory.all()) {
+                String k = it.switchKey();
+                if (k != null && all.containsKey(k)) covered++;
+            }
+            if (total > 0) {
+                sb.append(META_FEATURES).append('=').append(covered)
+                  .append('/').append(total).append('\n');
+            }
+        } catch (Throwable ignore) {
+        }
         return new ExportResult(sb.toString(), count, skipped);
     }
 
@@ -93,10 +144,13 @@ public final class ConfigBackup {
         }
     }
 
+    
+
+    
     public static final class ImportResult {
         public final boolean ok;
-        public final int applied;
-        public final String message;
+        public final int applied;        
+        public final String message;     
         public ImportResult(boolean ok, int applied, String message) {
             this.ok = ok;
             this.applied = applied;
@@ -130,13 +184,13 @@ public final class ConfigBackup {
         Properties cur = loadRaw(filesRoot);
         int applied = 0;
         for (String name : from.stringPropertyNames()) {
-            if (name.startsWith("__")) continue;
-            if (isSensitive(name)) continue;
+            if (name.startsWith("__")) continue;    
+            if (isSensitive(name)) continue;        
             cur.setProperty(name, from.getProperty(name));
             applied++;
         }
         if (!saveRaw(filesRoot, cur)) return new ImportResult(false, 0, "写配置失败");
-        HookConfig.reload();
+        HookConfig.reload();                        
         note.append("导入 ").append(applied).append(" 条");
         return new ImportResult(true, applied, note.toString());
     }
@@ -160,6 +214,9 @@ public final class ConfigBackup {
         }
     }
 
+    
+
+    
     private static File rootOf(Context ctx) {
         return ctx == null ? null : ctx.getFilesDir();
     }
@@ -191,10 +248,11 @@ public final class ConfigBackup {
         }
     }
 
+    
     private static String groupOf(String key) {
         if (key == null) return "其它";
         String k = key.toLowerCase(java.util.Locale.ROOT);
-
+        
         if (k.contains(".")) {
             String cls = k.substring(k.lastIndexOf('.') + 1);
             if (cls.startsWith("cat")) return "猫娘化";
@@ -205,6 +263,7 @@ public final class ConfigBackup {
         }
         if (k.startsWith("cat_") || k.equals("cat")) return "猫娘化";
         if (k.startsWith("chat_")) return "聊天工具";
+        if (k.startsWith("rp_")) return "红包";
         if (k.startsWith("u_") || k.startsWith("unlock_")) return "去除限制";
         if (k.startsWith("hook_")) return "抓取/记录";
         return "其它";

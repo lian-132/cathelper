@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.api;
 
+import com.cathelperawa.owo.app.core.DataDir;
+
 import android.content.Context;
 
 import com.cathelperawa.owo.app.bridge.ElementFactory;
@@ -21,7 +23,7 @@ public final class IoApi {
         try {
             Context ctx = QQEnv.appContext();
             if (ctx == null) return null;
-            File d = new File(ctx.getFilesDir(), "cathelper");
+            File d = DataDir.global();
             if (!d.exists()) d.mkdirs();
             return d;
         } catch (Throwable t) {

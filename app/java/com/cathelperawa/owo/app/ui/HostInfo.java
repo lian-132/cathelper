@@ -8,6 +8,9 @@ public final class HostInfo {
 
     private HostInfo() {}
 
+    
+
+    
     public static String uin() {
         try {
             String v = QQEnv.currentUin();
@@ -23,7 +26,7 @@ public final class HostInfo {
             if (!empty(v)) return v;
         } catch (Throwable ignore) {
         }
-
+        
         try {
             Object rt = QQEnv.appRuntime();
             if (rt == null) return null;
@@ -54,8 +57,11 @@ public final class HostInfo {
         return "https://q1.qlogo.cn/g?b=qq&nk=" + uin + "&s=640";
     }
 
-    public static String hostVersion() {
+    
 
+    
+    public static String hostVersion() {
+        
         String name = null;
         try {
             Object rt = QQEnv.appRuntime();
@@ -148,14 +154,14 @@ public final class HostInfo {
     }
 
     private static String identifyFramework(ClassLoader cl, String maps) {
-
+        
         if (maps != null) {
             String m = maps.toLowerCase();
             if (m.contains("lsposed") || m.contains("lspd")) return "LSPosed";
             if (m.contains("edxposed")) return "EdXposed";
             if (m.contains("taichi")) return "TAICHI";
         }
-
+        
         if (classExists("org.meowcat.edxposed.manager.XposedApp", cl)
                 || classExists("de.robv.android.xposed.XposedBridgeEdXposed", cl)
                 || classExists("com.elderdrivers.riru.edxp.config.EdXpConfigGlobal", cl)) {
@@ -165,12 +171,12 @@ public final class HostInfo {
                 || classExists("me.weishu.exposed.ExposedBridge", cl)) {
             return "TAICHI";
         }
-
+        
         String clName = bridgeClassLoaderName();
         if (clName != null && clName.toLowerCase().contains("inmemorydex")) {
             return "LSPosed";
         }
-
+        
         if (classExists("de.robv.android.xposed.XposedBridge", cl)) return "Xposed";
         return "Xposed(未知实现)";
     }
@@ -270,8 +276,9 @@ public final class HostInfo {
     private static String friendlyHostName(String pkg) {
         if (pkg == null) return null;
         if (pkg.contains("com.tencent.tim")) return "TIM";
+        if (pkg.contains("com.tencent.mobileqq")) return "QQ";
         if (pkg.contains("com.cathelperawa.owo.app")) return "本模块";
-
+        
         return pkg;
     }
 

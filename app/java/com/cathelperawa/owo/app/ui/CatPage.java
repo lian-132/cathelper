@@ -79,8 +79,8 @@ public final class CatPage extends Page {
         LinearLayout ht = new LinearLayout(ctx);
         ht.setOrientation(LinearLayout.VERTICAL);
         ht.setPadding(dp(16), 0, dp(16), dp(14));
-        final TextView heroTag = pill(cfgGet("cat_total", false) ? "运行中" : "已关闭",
-                cfgGet("cat_total", false) ? 0xFFF07CA8 : 0xFF7FA5E6);
+        final TextView heroTag = pill(cfgGet("cat_total", true) ? "运行中" : "已关闭",
+                cfgGet("cat_total", true) ? 0xFFF07CA8 : 0xFF7FA5E6);
         heroTagRef = heroTag;
         LinearLayout hw = new LinearLayout(ctx);
         hw.setOrientation(LinearLayout.HORIZONTAL);
@@ -95,7 +95,7 @@ public final class CatPage extends Page {
 
         for (final String[] sw : CAT_SWITCHES) {
             final boolean isTotal = "cat_total".equals(sw[0]);
-
+            
             SwitchCard.OnToggled cb = new SwitchCard.OnToggled() {
                 @Override public void run(boolean nowOn) {
                     syncSiblings();

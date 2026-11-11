@@ -13,16 +13,47 @@ public final class UiConfig {
 
     private static final String FILE = "console";
 
-    public static boolean get(Context c, String key, boolean def) {
+    private static volatile Properties cache;
+    private static volatile long cacheAt = 0L;
+    private static final long CACHE_TTL = 1000L;
 
-        if ("cat_total".equals(key)) def = false;
+    private static Properties propsOf(Context c) {
+        long now = System.currentTimeMillis();
+        Properties p = cache;
+        if (p != null && now - cacheAt < CACHE_TTL) return p;
+        Properties np = new Properties();
         try {
             File f = new File(c.getFilesDir(), FILE);
-            if (!f.exists()) return def;
-            Properties p = new Properties();
-            try (FileInputStream in = new FileInputStream(f)) {
-                p.load(in);
+            if (f.exists()) {
+                try (FileInputStream in = new FileInputStream(f)) {
+                    np.load(in);
+                }
             }
+        } catch (Throwable ignore) {
+        }
+        cache = np;
+        cacheAt = now;
+        return np;
+    }
+
+    public static void invalidate() {
+        cache = null;
+        cacheAt = 0L;
+    }
+
+    public static boolean get(Context c, String key, boolean def) {
+        
+        if ("cat_total".equals(key)) def = false;
+        
+        try {
+            String ov = com.cathelperawa.owo.app.core.ConfigOverride.get(key);
+            if (ov != null) {
+                return "1".equals(ov) || "true".equalsIgnoreCase(ov);
+            }
+        } catch (Throwable ignore) {
+        }
+        try {
+            Properties p = propsOf(c);
             return "1".equals(p.getProperty(key, def ? "1" : "0"));
         } catch (Throwable t) {
             return def;
@@ -43,6 +74,7 @@ public final class UiConfig {
             try (FileOutputStream out = new FileOutputStream(f)) {
                 p.store(out, null);
             }
+            invalidate();
             com.cathelperawa.owo.app.core.HookLog.i("[UI] cfgSet " + key + "=" + v
                     + " path=" + f.getAbsolutePath());
         } catch (Throwable t) {
@@ -50,6 +82,7 @@ public final class UiConfig {
         }
     }
 
+    
     public static String cfgKey(String uiKey) {
         if ("master".equals(uiKey) || "cat".equals(uiKey)) return "cat_total";
         if ("revoke".equals(uiKey)) return "chat_revoke";
@@ -58,14 +91,26 @@ public final class UiConfig {
 
     public static boolean swOn(Context c, String uiKey) {
         String k = cfgKey(uiKey);
-
-        return get(c, k, false);
+        
+        boolean def = "chat_revoke".equals(k)
+                || "hook_capture".equals(k)
+                || "hook_autocap".equals(k)
+                || "chat_customdice".equals(k)
+                || "chat_emojiimg".equals(k)
+                || "chat_flashpic".equals(k)
+                || "chat_edittext".equals(k)
+                || "cat_total".equals(k)
+                
+                || "u_forward".equals(k)
+                || "u_patpat".equals(k);
+        return get(c, k, def);
     }
 
     public static void swSet(Context c, String uiKey, boolean v) {
         set(c, cfgKey(uiKey), v);
     }
 
+    
     public static String getString(Context c, String key, String def) {
         try {
             File f = new File(c.getFilesDir(), FILE);

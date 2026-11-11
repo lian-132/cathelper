@@ -2,26 +2,31 @@ package com.cathelperawa.owo.app.model;
 
 public enum CatChannel {
 
+    
     KERNEL("kernel"),
 
+    
     DIRECT("direct"),
-
+    
     LONG("long"),
-
+    
     CARD("card"),
 
+    
     GRAB("grab"),
-
+    
     TEXT("text"),
 
+    
     GRAY_TIP("grayTip"),
-
+    
     GHOST("ghost"),
 
+    
     HB_NATIVE("hbNative"),
-
+    
     NET("net"),
-
+    
     SERVLET("servlet");
 
     public final String label;

@@ -15,7 +15,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
-@HookItem(name = "猫娘化", path = "聊天与消息/猫娘化", description = "发送的文本自动猫娘化", order = 10)
+@HookItem(name = "猫娘化", path = "聊天与消息/猫娘化", description = "发送的文本自动猫娘化",
+        order = 10, hosts = {"tim", "qq"})
 public class FeatureCat extends HookItemBase {
 
     private Context hostCtx;
@@ -28,13 +29,16 @@ public class FeatureCat extends HookItemBase {
     public void entry(ClassLoader cl) {
         hint("发送消息时");
         hostCtx = ctx;
+        
         Class<?> msgService = HookApi.findClass(cl,
-                "com.tencent.qqnt.kernel.api.impl.MsgService");
+                "com.tencent.qqnt.kernel.api.impl.MsgService",
+                "com.tencent.qqnt.kernel.api.IMsgService",
+                "com.tencent.qqnt.kernel.api.impl.BaseMsgService");
         if (msgService == null) {
             fail("未找到 MsgService，猫娘化不可用");
             return;
         }
-
+        
         int hooked = 0;
         for (final Method m : msgService.getDeclaredMethods()) {
             if (!"sendMsg".equals(m.getName())) continue;
@@ -86,7 +90,7 @@ public class FeatureCat extends HookItemBase {
 
     private void rewrite(Object[] args, String peerUid) {
         if (args == null) return;
-
+        
         if (AppConfig.current == null
                 || System.currentTimeMillis() - lastCfgLoad > 2000) {
             lastCfgLoad = System.currentTimeMillis();
@@ -96,33 +100,61 @@ public class FeatureCat extends HookItemBase {
                 + " peer=" + peerUid + " allow=" + MsgStore.allows(peerUid));
         if (AppConfig.current == null || !AppConfig.current.total) return;
         if (peerUid != null && !MsgStore.allows(peerUid)) return;
-
+        
         fire("改写消息");
 
         for (Object arg : args) {
             if (!(arg instanceof List)) continue;
-            List<?> list = (List<?>) arg;
-            if (list.isEmpty()) continue;
-
-            for (Object el : list) {
-                if (el == null) continue;
-                String cls = el.getClass().getName();
-                if (!cls.contains("Element")) continue;
-                if (Refl.field(el, "textElement") == null) continue;
-
-                String old = textContent(el);
-                if (old == null || old.length() == 0) return;
-                if (old.contains("喵")) return;
-
-                String out = CatProcessor.process(old, AppConfig.current);
-                if (out != null && !out.equals(old)) {
-                    setTextContent(el, out);
-                    HookLog.d("猫娘化: " + brief(old) + " -> " + brief(out));
-                }
-                return;
-            }
-            return;
+            if (rewriteList((List<?>) arg) > 0) return;
         }
+    }
+
+    private int rewriteList(List<?> list) {
+        int done = 0;
+        for (Object el : list) {
+            if (el == null) continue;
+            if (!el.getClass().getName().contains("Element")) continue;
+            Object te = Refl.field(el, "textElement");
+            if (te == null) continue;
+
+            String old = textContent(el);
+            if (old == null) continue;
+
+            int atType = asInt(Refl.field(te, "atType"), 0);
+            String prefix = "";
+            String body = old;
+            if (atType != 0) {
+                int cut = atPrefixEnd(old);
+                if (cut <= 0) {
+                    HookLog.d("猫娘化: 跳过 @ 占位 " + brief(old));
+                    continue;
+                }
+                prefix = old.substring(0, cut);
+                body = old.substring(cut);
+            }
+            if (body.trim().isEmpty()) continue;
+            if (body.contains("喵")) continue;   
+
+            String out = CatProcessor.process(body, AppConfig.current);
+            if (out == null || out.trim().isEmpty() || out.equals(body)) continue;
+            setTextContent(el, prefix + out);
+            done++;
+            HookLog.d("猫娘化: " + brief(old) + " -> " + brief(prefix + out));
+        }
+        return done;
+    }
+
+    private static int atPrefixEnd(String s) {
+        if (s == null || !s.startsWith("@")) return 0;
+        for (int i = 1; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == ' ' || c == '\u00a0' || c == '\u3000' || c == '\t') return i + 1;
+        }
+        return 0;
+    }
+
+    private static int asInt(Object o, int def) {
+        return o instanceof Number ? ((Number) o).intValue() : def;
     }
 
     private static String textContent(Object el) {

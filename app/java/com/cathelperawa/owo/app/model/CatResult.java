@@ -2,24 +2,29 @@ package com.cathelperawa.owo.app.model;
 
 public final class CatResult {
 
+    
+
+    
     public enum Fail {
-
+        
         OK,
-
+        
         HOST_MISSING,
-
+        
         BAD_ARGS,
-
+        
         NOT_READY,
-
+        
         REJECTED,
-
+        
         TIMEOUT,
-
+        
         UNSUPPORTED,
-
+        
         UNKNOWN
     }
+
+    
 
     private final Fail fail;
     private final String note;
@@ -35,6 +40,10 @@ public final class CatResult {
         this.cause = cause;
         this.msgId = msgId;
     }
+
+    
+
+    
 
     public static CatResult success() {
         return new CatResult(Fail.OK, null, CatChannel.KERNEL, null, 0);
@@ -52,6 +61,9 @@ public final class CatResult {
         return new CatResult(Fail.OK, note, ch == null ? CatChannel.KERNEL : ch, null, 0);
     }
 
+    
+
+    
     public static CatResult fail(String note) {
         return new CatResult(Fail.UNKNOWN, note, null, null, 0);
     }
@@ -68,6 +80,9 @@ public final class CatResult {
         return new CatResult(f, note, null, cause, 0);
     }
 
+    
+
+    
     public static CatResult badArgs(String note) {
         return fail(Fail.BAD_ARGS, note);
     }
@@ -96,6 +111,9 @@ public final class CatResult {
         return fail(Fail.UNKNOWN, note, cause);
     }
 
+    
+
+    
     public boolean ok() {
         return fail == Fail.OK;
     }
@@ -135,6 +153,9 @@ public final class CatResult {
         return sb.toString();
     }
 
+    
+
+    
     public CatResult withNote(String extra) {
         if (extra == null || extra.isEmpty()) return this;
         String merged = (note == null || note.isEmpty()) ? extra : (note + " · " + extra);
@@ -157,6 +178,9 @@ public final class CatResult {
         return this;
     }
 
+    
+
+    
     public interface Logger {
         void w(String msg);
     }
@@ -166,7 +190,7 @@ public final class CatResult {
             try {
                 com.cathelperawa.owo.app.core.HookLog.w(msg);
             } catch (Throwable ignore) {
-
+                
             }
         }
     };
@@ -186,6 +210,9 @@ public final class CatResult {
         return ok() ? this : (other == null ? this : other);
     }
 
+    
+
+    
     public boolean toBoolean() {
         return ok();
     }

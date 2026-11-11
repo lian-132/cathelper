@@ -13,17 +13,17 @@ public final class RuntimeErrors {
     public static final int MAX_SNAPSHOTS = 3;
 
     public static final class Entry {
-        public final String feature;
-        public final String site;
-        public final String type;
-        public final String message;
-        public volatile int count;
-        public final long firstAt;
-        public volatile long lastAt;
-        private String stack;
+        public final String feature;    
+        public final String site;       
+        public final String type;       
+        public final String message;    
+        public volatile int count;      
+        public final long firstAt;      
+        public volatile long lastAt;    
+        private String stack;           
 
         private final String[] snapshots = new String[MAX_SNAPSHOTS];
-
+        
         private final String[] shapes = new String[MAX_SNAPSHOTS];
         private int snapCount = 0;
 
@@ -51,7 +51,7 @@ public final class RuntimeErrors {
             if (shape.isEmpty()) return;
             int n = Math.min(snapCount, MAX_SNAPSHOTS);
             for (int i = 0; i < n; i++) {
-                if (shape.equals(shapes[i])) return;
+                if (shape.equals(shapes[i])) return;   
             }
             String s = stackOf(t);
             int idx = snapCount % MAX_SNAPSHOTS;
@@ -70,6 +70,7 @@ public final class RuntimeErrors {
             return out;
         }
 
+        
         public String stack() {
             return stack;
         }
@@ -98,10 +99,15 @@ public final class RuntimeErrors {
     private static final java.util.concurrent.atomic.AtomicInteger TOTAL =
             new java.util.concurrent.atomic.AtomicInteger(0);
 
+    
+    
     private static final long FLUSH_INTERVAL_MS = 5000L;
 
     private RuntimeErrors() {}
 
+    
+
+    
     public static void record(String feature, String site, Throwable t) {
         if (t == null) return;
         TOTAL.incrementAndGet();
@@ -111,11 +117,11 @@ public final class RuntimeErrors {
             Entry e = ERRORS.get(key);
             if (e != null) {
                 e.bump();
-                e.snapshot(t);
+                e.snapshot(t);      
                 return;
             }
             if (ERRORS.size() >= MAX_KINDS) {
-
+                
                 Entry other = ERRORS.get("|OTHER|");
                 if (other != null) {
                     other.bump();
@@ -126,7 +132,7 @@ public final class RuntimeErrors {
                 return;
             }
             Entry ne = new Entry(feature, site, t);
-            ne.snapshot(t);
+            ne.snapshot(t);   
             ERRORS.put(key, ne);
             maybeAutoFlush(key);
         }
@@ -136,12 +142,16 @@ public final class RuntimeErrors {
         record(null, null, t);
     }
 
+    
+
+    
     public static List<Entry> all() {
         synchronized (ERRORS) {
             return new ArrayList<Entry>(ERRORS.values());
         }
     }
 
+    
     public static int flushFailures() {
         return FLUSH_FAILS.get();
     }
@@ -174,25 +184,32 @@ public final class RuntimeErrors {
         TOTAL.set(0);
     }
 
+    
+
+    
+
+    
+
+    
     private static final class FlushState {
         final java.io.File dir;
-
+        
         final boolean immediate;
         volatile long at;
         volatile int total;
-
+        
         final java.util.Set<String> flushed = java.util.Collections.synchronizedSet(
                 new java.util.HashSet<String>());
         FlushState(java.io.File dir, boolean immediate) {
             this.dir = dir;
             this.immediate = immediate;
             this.at = 0L;
-            this.total = -1;
+            this.total = -1;      
         }
     }
 
     private static volatile FlushState flushState = null;
-
+    
     private static final java.util.concurrent.atomic.AtomicInteger FLUSH_FAILS =
             new java.util.concurrent.atomic.AtomicInteger(0);
 
@@ -209,7 +226,7 @@ public final class RuntimeErrors {
     }
 
     private static void maybeAutoFlush(String key) {
-        FlushState st = flushState;
+        FlushState st = flushState;      
         if (st == null) return;
         if (st.dir == null) return;
         long now = System.currentTimeMillis();
@@ -224,7 +241,7 @@ public final class RuntimeErrors {
         }
         if (now - st.at < FLUSH_INTERVAL_MS) return;
         int totalNow = TOTAL.get();
-        if (totalNow == st.total) return;
+        if (totalNow == st.total) return;   
 
         st.at = now;
         st.total = totalNow;
@@ -242,6 +259,9 @@ public final class RuntimeErrors {
         return out;
     }
 
+    
+
+    
     public static final long MAX_LOG_BYTES = 2L * 1024 * 1024;
 
     public static final int LOG_KEEP_DAYS = 7;
@@ -266,13 +286,13 @@ public final class RuntimeErrors {
                 byte[] bytes = dump().getBytes("UTF-8");
                 fos.write(bytes);
                 fos.flush();
-                fos.getFD().sync();
+                fos.getFD().sync();     
             } finally {
                 fos.close();
             }
             cleanOld(dir);
         } catch (Throwable ignore) {
-
+            
         }
         return out;
     }
@@ -283,7 +303,7 @@ public final class RuntimeErrors {
             java.io.File bak = new java.io.File(f.getParentFile(),
                     ROTATE_PREFIX + fmt.format(new java.util.Date()) + ".log");
             if (bak.exists()) bak.delete();
-            if (!f.renameTo(bak)) f.delete();
+            if (!f.renameTo(bak)) f.delete();   
         } catch (Throwable ignore) {
             try { f.delete(); } catch (Throwable ignore2) { }
         }
@@ -319,7 +339,7 @@ public final class RuntimeErrors {
             if (e.stack != null && !e.stack.isEmpty()) {
                 sb.append("[首次] ").append(e.stack).append('\n');
             }
-
+            
             List<String> recent = e.recentStacks();
             for (int k = 0; k < recent.size(); k++) {
                 sb.append("[最近").append(k + 1).append("] ")
@@ -328,6 +348,8 @@ public final class RuntimeErrors {
         }
         return sb.toString();
     }
+
+    
 
     private static String stackOf(Throwable t) {
         try {

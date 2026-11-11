@@ -2,12 +2,29 @@ package com.cathelperawa.owo.app.feature;
 
 import android.content.Context;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
+
 import com.cathelperawa.owo.app.core.HookLog;
 
 import java.lang.reflect.Method;
 import java.util.List;
 
 public final class MenuBridge {
+
+    private static final ClassResolver.Spec MENU_ITEM_SPEC =
+            new ClassResolver.Spec("menu.item")
+                    .candidates("com.tencent.qqnt.aio.menu.d",
+                                "com.tencent.mobileqq.utils.dialogutils.QQCustomMenuItem")
+                    .nameMatches("(QQCustomMenuItem|\\baio\\.menu\\.[a-z]$)")
+                    .validator(new ClassResolver.Validator() {
+                        @Override public boolean accept(Class<?> c) {
+                            for (java.lang.reflect.Constructor<?> ct : c.getDeclaredConstructors()) {
+                                Class<?>[] ps = ct.getParameterTypes();
+                                if (ps.length == 2 && ps[0] == Context.class) return true;
+                            }
+                            return false;
+                        }
+                    });
 
     private static volatile Context pendingCtx;
     private static volatile Object lastMsgItem;
@@ -23,38 +40,48 @@ public final class MenuBridge {
     }
 
     public static Object createItem(Context ctx, String title, int resId, Runnable onClick) {
+        return createItem(ctx, null, title, resId, onClick);
+    }
+
+    public static Object createItem(Context ctx, Object aioMsgItem,
+                                    String title, int resId, Runnable onClick) {
         try {
             ClassLoader cl = ctx.getClassLoader();
-            Class<?> itemCls = null;
-            for (String n : new String[]{
-                    "com.tencent.qqnt.aio.menu.d",
-                    "com.tencent.mobileqq.utils.dialogutils.QQCustomMenuItem"}) {
-                try {
-                    itemCls = Class.forName(n, false, cl);
-                    break;
-                } catch (Throwable ignore) {
-                }
-            }
+
+            
+            Class<?> itemCls = ClassResolver.resolve(ctx, cl, MENU_ITEM_SPEC);
             if (itemCls == null) {
-                HookLog.w("未找到菜单项类");
+                HookLog.w("未找到菜单项类（已尝试候选名 + 特征搜索）");
                 return null;
             }
             Object item = null;
+
+            
+
+            
             for (java.lang.reflect.Constructor<?> c : itemCls.getDeclaredConstructors()) {
                 Class<?>[] ps = c.getParameterTypes();
-                if (ps.length == 2 && ps[0] == Context.class) {
-                    try {
-                        c.setAccessible(true);
-                        item = c.newInstance(ctx, null);
-                        break;
-                    } catch (Throwable ignore) {
-                    }
+                if (!containsType(ps, Context.class)) continue;
+                item = tryNew(c, ps, ctx, aioMsgItem);
+                if (item != null) break;
+            }
+            
+            if (item == null) {
+                for (java.lang.reflect.Constructor<?> c : itemCls.getDeclaredConstructors()) {
+                    Class<?>[] ps = c.getParameterTypes();
+                    if (containsType(ps, Context.class)) continue;
+                    item = tryNew(c, ps, ctx, aioMsgItem);
+                    if (item != null) break;
                 }
             }
-            if (item == null) return null;
+            if (item == null) {
+                HookLog.w("菜单项构造全部失败：" + itemCls.getName()
+                        + " ctors=" + itemCls.getDeclaredConstructors().length);
+                return null;
+            }
 
             setField(item, "title", title);
-            setField(item, "a", title);
+            setField(item, "a", title);   
             installClick(item, onClick);
             return item;
         } catch (Throwable t) {
@@ -122,5 +149,37 @@ public final class MenuBridge {
             sb.append("\n");
         }
         return sb.toString();
+    }
+
+    private static boolean containsType(Class<?>[] ps, Class<?> t) {
+        for (Class<?> p : ps) if (p == t) return true;
+        return false;
+    }
+
+    private static Object tryNew(java.lang.reflect.Constructor<?> c, Class<?>[] ps,
+                                 Context ctx, Object aioMsgItem) {
+        Object[] args = new Object[ps.length];
+        for (int i = 0; i < ps.length; i++) {
+            Class<?> p = ps[i];
+            if (p == Context.class) args[i] = ctx;
+            else if (p == int.class) args[i] = 0;
+            else if (p == long.class) args[i] = 0L;
+            else if (p == boolean.class) args[i] = Boolean.FALSE;
+            else if (p == float.class) args[i] = 0f;
+            else if (p == double.class) args[i] = 0d;
+            else if (p == short.class) args[i] = (short) 0;
+            else if (p == byte.class) args[i] = (byte) 0;
+            else if (p == char.class) args[i] = '\0';
+            else if (p.isPrimitive()) return null;
+            else if (aioMsgItem != null && p.isInstance(aioMsgItem)) args[i] = aioMsgItem;
+            else args[i] = null;
+        }
+        try {
+            c.setAccessible(true);
+            return c.newInstance(args);
+        } catch (Throwable t) {
+            HookLog.w("菜单项构造尝试失败 " + c + " :: " + t);
+            return null;
+        }
     }
 }

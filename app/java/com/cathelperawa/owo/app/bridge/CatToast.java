@@ -29,9 +29,8 @@ public final class CatToast {
     private static volatile Bitmap icon;
     private static volatile boolean iconTried;
 
-    private static Bitmap icon() {
-        if (iconTried) return icon;
-        iconTried = true;
+    private static synchronized Bitmap icon() {
+        if (iconTried && icon != null) return icon;
         try {
             Context ctx = QQEnv.appContext();
             if (ctx == null) return null;
@@ -48,8 +47,10 @@ public final class CatToast {
             } finally {
                 zf.close();
             }
+            iconTried = (icon != null);   
         } catch (Throwable t) {
             icon = null;
+            iconTried = false;
         }
         return icon;
     }
@@ -70,7 +71,7 @@ public final class CatToast {
         if (c == null) return;
         try {
             Bitmap bmp = icon();
-            if (bmp == null) {
+            if (bmp == null) {          
                 Toast.makeText(c, msg, Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -109,7 +110,7 @@ public final class CatToast {
             t.setGravity(Gravity.BOTTOM, 0, dp(c, 110));
             t.show();
         } catch (Throwable t) {
-
+            
             try { Toast.makeText(c, msg, Toast.LENGTH_SHORT).show(); } catch (Throwable ignore) {}
         }
     }

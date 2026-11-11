@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="xposed_scope">
+        <!-- 必须包含模块自己，否则 hook 自己回传激活状态的那段永远不会跑 -->
         <item>com.cathelperawa.owo.app</item>
         <item>com.tencent.tim</item>
+        <item>com.tencent.mobileqq</item>
     </string-array>
 </resources>

@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.core;
 
+import com.cathelperawa.owo.app.core.DataDir;
+
 import android.content.Context;
 
 import java.io.File;
@@ -36,18 +38,23 @@ public final class BugReportExporter {
             if (!outDir.exists() && !outDir.mkdirs()) return new Result(null, 0, "无法创建输出目录");
 
             File zip = new File(outDir, "cathelper-report-" + stamp() + ".zip");
-            ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
+
+            
+
+            File tmpZip = new File(outDir, zip.getName() + "." + myPid() + ".tmp");
+            ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(tmpZip));
             try {
                 putText(zos, "info.txt", info(ctx, src));
+                putText(zos, "env.txt", envSnapshot(ctx));
                 putText(zos, "features.txt", HookItemFactory.snapshot());
                 putFile(zos, "errors.log", new File(src.filesRoot(), "errors.log"));
-
+                
                 ConfigBackup.ExportResult cfg = ConfigBackup.exportDir(src.filesRoot(),
                         com.cathelperawa.owo.app.BuildInfo.VERSION_CODE);
                 if (cfg.count > 0) {
                     putText(zos, "console", cfg.text);
                 } else {
-
+                    
                     putText(zos, "console", "# 本机未读到配置（跨进程时配置在宿主私有目录）\n"
                             + "# 完整配置请用「跨进程打包」后的包，或手动查看 "
                             + "/data/user/0/com.tencent.tim/files/console\n");
@@ -58,6 +65,24 @@ public final class BugReportExporter {
                                 + "不包含：任何聊天记录、账号信息。\n");
             } finally {
                 zos.close();
+            }
+            
+            if (!tmpZip.renameTo(zip)) {
+                
+                java.io.FileInputStream in = null;
+                java.io.FileOutputStream out = null;
+                try {
+                    in = new java.io.FileInputStream(tmpZip);
+                    out = new java.io.FileOutputStream(zip);
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    out.flush();
+                } finally {
+                    if (in != null) try { in.close(); } catch (Throwable ignore) { }
+                    if (out != null) try { out.close(); } catch (Throwable ignore) { }
+                    try { tmpZip.delete(); } catch (Throwable ignore) { }
+                }
             }
             long len = zip.length();
 
@@ -84,27 +109,33 @@ public final class BugReportExporter {
         }
     }
 
+    
+
+    
     public abstract static class BundleSource {
-
+        
         public abstract File filesRoot();
-
+        
         public abstract File outDir();
-
+        
         public int hostVersion() { return 0; }
-
+        
         public String hostVersionName() { return "?"; }
 
         public static BundleSource fromContext(final Context ctx) {
             return new BundleSource() {
                 @Override public File filesRoot() {
                     try {
-                        return new File(ctx.getFilesDir(), "cathelper");
+                        return DataDir.global();
                     } catch (Throwable t) {
                         return null;
                     }
                 }
                 @Override public File outDir() {
 
+                    
+
+                    
                     return externalReportsDir(ctx);
                 }
                 @Override public int hostVersion() {
@@ -121,6 +152,12 @@ public final class BugReportExporter {
 
     public static File externalReportsDir(Context ctx) {
 
+        
+
+        
+
+        
+        
         try {
             File base = ctx.getExternalFilesDir(null);
             if (base != null) return new File(base, EXTERNAL_DIR);
@@ -133,13 +170,15 @@ public final class BugReportExporter {
             }
         } catch (Throwable ignore) {
         }
-
+        
         try {
             return new File(ctx.getFilesDir(), EXTERNAL_DIR);
         } catch (Throwable t) {
             return null;
         }
     }
+
+    
 
     private static String info(Context ctx, BundleSource src) {
         StringBuilder sb = new StringBuilder(512);
@@ -161,7 +200,137 @@ public final class BugReportExporter {
         try {
             return "pid=" + android.os.Process.myPid();
         } catch (Throwable t) {
+            return "?";     
+        }
+    }
+
+    private static String envSnapshot(android.content.Context ctx) {
+        StringBuilder sb = new StringBuilder(1024);
+        sb.append("══ 环境快照 ══\n");
+        sb.append("模块版本 : ").append(com.cathelperawa.owo.app.BuildInfo.VERSION_NAME)
+                .append(" (").append(com.cathelperawa.owo.app.BuildInfo.VERSION_CODE).append(")\n");
+        sb.append("构建时间 : ").append(com.cathelperawa.owo.app.BuildInfo.BUILD_TIME).append('\n');
+        sb.append("构建标识 : ").append(com.cathelperawa.owo.app.BuildInfo.BUILD_UUID).append('\n');
+
+        try {
+            sb.append("模块包名 : ").append(com.cathelperawa.owo.app.BuildInfo.MODULE_PKG).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("宿主包名 : ").append(ctx.getPackageName()).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("进程     : ").append(safeProcName())
+                    .append("  掩码=").append(Ipc.currentProcMask()).append('\n');
+        } catch (Throwable ignore) { }
+
+        try {
+            sb.append("Android  : ").append(android.os.Build.VERSION.RELEASE)
+                    .append(" (SDK ").append(android.os.Build.VERSION.SDK_INT).append(")\n");
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("厂商/型号: ").append(android.os.Build.MANUFACTURER)
+                    .append(' ').append(android.os.Build.MODEL).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("品牌/设备: ").append(android.os.Build.BRAND)
+                    .append(" / ").append(android.os.Build.DEVICE).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("指纹     : ").append(android.os.Build.FINGERPRINT).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            String[] abis = android.os.Build.SUPPORTED_ABIS;
+            if (abis != null) {
+                sb.append("ABI      : ");
+                for (int i = 0; i < abis.length; i++) {
+                    if (i > 0) sb.append(", ");
+                    sb.append(abis[i]);
+                }
+                sb.append('\n');
+            }
+        } catch (Throwable ignore) { }
+        
+        try {
+            String kv = System.getProperty("os.version");
+            if (kv == null || kv.length() == 0) kv = firstLine("/proc/version");
+            sb.append("内核     : ").append(kv).append('\n');
+        } catch (Throwable ignore) { }
+        
+        try {
+            sb.append("SELinux  : ").append(selinuxState()).append('\n');
+        } catch (Throwable ignore) { }
+
+        try {
+            de.robv.android.xposed.XposedBridge.getXposedVersion();
+            sb.append("框架版本 : ").append(de.robv.android.xposed.XposedBridge.getXposedVersion())
+                    .append('\n');
+        } catch (Throwable t) {
+            sb.append("框架版本 : 未激活或不可读\n");
+        }
+        try {
+            com.cathelperawa.owo.app.XposedStatus.Info xi =
+                    com.cathelperawa.owo.app.XposedStatus.query();
+            if (xi.active) {
+                sb.append("模块状态 : 已激活  api=").append(xi.api)
+                        .append("  framework=").append(xi.framework).append('\n');
+            } else {
+
+                sb.append("模块状态 : 本进程内不可判（宿主进程看不到本体状态桥）\n");
+            }
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("加载阶段 : ").append(LoadState.summary()).append('\n');
+        } catch (Throwable ignore) { }
+        try {
+            sb.append("功能     : 共 ").append(HookItemFactory.all().size()).append(" 项\n");
+        } catch (Throwable ignore) { }
+        
+        try {
+            sb.append("启动闸门 : ").append(StartupGate.armed() ? "已挂载" : "未挂载")
+                    .append(" / ").append(StartupGate.fired() ? "已触发" : "未触发").append('\n');
+        } catch (Throwable ignore) { }
+        
+        try {
+            String bt = BootTiming.summary();
+            if (bt != null && bt.length() > 0) sb.append("启动耗时 : ").append(bt).append('\n');
+        } catch (Throwable ignore) { }
+
+        return sb.toString();
+    }
+
+    private static int myPid() {
+        try { return android.os.Process.myPid(); } catch (Throwable t) { return 0; }
+    }
+
+    private static String safeProcName() {
+        try {
+            return Ipc.currentProcName();
+        } catch (Throwable t) {
             return "?";
+        }
+    }
+
+    private static String selinuxState() {
+        String v = firstLine("/sys/fs/selinux/enforce");
+        if ("1".equals(v)) return "Enforcing";
+        if ("0".equals(v)) return "Permissive";
+        String cur = firstLine("/proc/self/attr/current");
+        if (cur != null && !"-".equals(cur) && cur.length() > 0) {
+            return "?（应用侧不可读；本进程上下文=" + cur + "）";
+        }
+        return "?（应用侧不可读，需 root 执行 getenforce）";
+    }
+
+    private static String firstLine(String path) {
+        java.io.BufferedReader r = null;
+        try {
+            r = new java.io.BufferedReader(new java.io.FileReader(path));
+            String s = r.readLine();
+            return s == null ? "?" : s.trim();
+        } catch (Throwable t) {
+            return "-";
+        } finally {
+            if (r != null) try { r.close(); } catch (Throwable ignore) { }
         }
     }
 
@@ -182,7 +351,7 @@ public final class BugReportExporter {
             while ((n = in.read(buf)) > 0) zos.write(buf, 0, n);
             zos.closeEntry();
         } catch (Throwable ignore) {
-
+            
         } finally {
             if (in != null) try { in.close(); } catch (Throwable ignore) { }
         }
@@ -193,6 +362,9 @@ public final class BugReportExporter {
                 .format(new java.util.Date());
     }
 
+    
+
+    
     public static File exchangeDir(Context ctx) {
         return externalReportsDir(ctx);
     }

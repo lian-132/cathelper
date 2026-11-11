@@ -21,17 +21,19 @@ public final class RepeatCore {
 
     private RepeatCore() {}
 
-    private static final long GRAB_TIMEOUT_MS = 8000;
+    private static final long GRAB_TIMEOUT_MS = 4000;
 
     public static final class Outcome {
         public boolean ok;
-        public String channel;
+        public String channel;   
         public String note;
         public String toString() {
             return (ok ? " " : " ") + (channel == null ? "-" : channel)
                     + (note == null ? "" : " · " + note);
         }
     }
+
+    
 
     public static String kind(Object el) {
         if (Refl.field(el, "grayTipElement") != null) return "gray";
@@ -86,6 +88,9 @@ public final class RepeatCore {
         return out;
     }
 
+    
+
+    
     public static Outcome repeat(Object record, int chatType, String peerUid) {
         Outcome out = new Outcome();
         try {
@@ -94,10 +99,25 @@ public final class RepeatCore {
                 return out;
             }
 
-            String rawElems = grabRawElements(record, chatType);
+            
+
+            
+
+            
 
             List<Object> els = collect(record);
             List<Object> sendEls = sendable(els);
+
+            String localText = plainText(record);
+            boolean onlyText = !sendEls.isEmpty() && onlyTextElements(sendEls);
+            if (onlyText && localText.length() > 0
+                    && CatApi.sendText(chatType, peerUid, localText)) {
+                out.ok = true;
+                out.channel = "text";
+                out.note = brief(localText);
+                return out;
+            }
+
             if (!sendEls.isEmpty()) {
                 Object contact = ContactFactory.make(chatType, peerUid, "");
                 if (contact != null && MsgSender.send(contact, sendEls)) {
@@ -106,9 +126,10 @@ public final class RepeatCore {
                     out.note = "元素 ×" + sendEls.size();
                     return out;
                 }
-                HookLog.w("复读[内核] 发送失败，尝试提取路线");
+                HookLog.w("复读[内核] 发送失败，转提取路线");
             }
 
+            String rawElems = grabRawElements(record, chatType);
             if (rawElems != null && rawElems.length() > 2) {
                 HookLog.i("复读[提取] " + brief(rawElems));
                 String sendableJson = filterSendable(rawElems);
@@ -116,7 +137,7 @@ public final class RepeatCore {
                         + (sendableJson == null ? "null" : sendableJson.length() + "B")
                         + " 内容=" + brief(sendableJson));
                 if (sendableJson != null && sendableJson.length() > 2) {
-
+                    
                     if (isOnlyText(sendableJson)) {
                         String plain = plainTextOfJson(sendableJson);
                         if (plain.length() > 0 && CatApi.sendText(chatType, peerUid, plain)) {
@@ -159,7 +180,7 @@ public final class RepeatCore {
 
     public static String grabRawElements(Object record, int chatType) {
         try {
-
+            
             final String wantCmd = (chatType == 1)
                     ? "MessageSvc.PbGetOneDayRoamMsg"
                     : (chatType == 2 ? "MessageSvc.PbGetGroupMsg" : null);
@@ -168,7 +189,7 @@ public final class RepeatCore {
             final CountDownLatch latch = new CountDownLatch(1);
             final String[] box = new String[1];
 
-            FeatureMsfTap.expect(wantCmd, new FeatureMsfTap.Listener() {
+            final String ticket = FeatureMsfTap.expect(wantCmd, new FeatureMsfTap.Listener() {
                 @Override
                 public void onResp(String cmd, JSONObject content) {
                     try {
@@ -189,13 +210,13 @@ public final class RepeatCore {
             if (chatType == 1) cmd = MsgFetcher.pullC2C(record);
             else cmd = MsgFetcher.pullGroup(record);
             if (cmd == null) {
-                FeatureMsfTap.cancel();
+                FeatureMsfTap.cancel(ticket);
                 return null;
             }
 
             if (!latch.await(GRAB_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                FeatureMsfTap.cancel();
-                HookLog.w("复读[提取] 超时");
+                FeatureMsfTap.cancel(ticket);   
+                HookLog.w("复读[提取] 超时 " + GRAB_TIMEOUT_MS + "ms");
                 return null;
             }
             return box[0];
@@ -218,25 +239,26 @@ public final class RepeatCore {
             return out.toString();
         } catch (Throwable t) {
             HookLog.w("filterSendable 失败: " + t);
-            return rawJson;
+            return rawJson;   
         }
     }
 
     private static boolean isSendableElement(JSONObject el) {
 
-        if (el.has("1"))  return true;
-        if (el.has("2"))  return true;
-        if (el.has("3"))  return true;
-        if (el.has("4"))  return true;
-        if (el.has("5"))  return true;
-        if (el.has("6"))  return true;
-        if (el.has("8"))  return true;
-        if (el.has("10")) return true;
-        if (el.has("16")) return true;
+        
+        if (el.has("1"))  return true;    
+        if (el.has("2"))  return true;    
+        if (el.has("3"))  return true;    
+        if (el.has("4"))  return true;    
+        if (el.has("5"))  return true;    
+        if (el.has("6"))  return true;    
+        if (el.has("8"))  return true;    
+        if (el.has("10")) return true;    
+        if (el.has("16")) return true;    
         if (el.has("37")) {
 
             JSONObject s = el.optJSONObject("37");
-            if (s != null && (s.has("7") || s.has("6"))) return true;
+            if (s != null && (s.has("7") || s.has("6"))) return true;   
             return false;
         }
 
@@ -244,13 +266,22 @@ public final class RepeatCore {
             try {
                 JSONObject c = el.optJSONObject("53");
                 if (c == null) return false;
-                return c.optInt("1", -1) == 41;
+                return c.optInt("1", -1) == 41;   
             } catch (Throwable t) {
                 return false;
             }
         }
 
         return false;
+    }
+
+    private static boolean onlyTextElements(List<Object> els) {
+        if (els == null || els.isEmpty()) return false;
+        for (Object el : els) {
+            if (el == null) return false;
+            if (Refl.field(el, "textElement") == null) return false;
+        }
+        return true;
     }
 
     private static boolean isOnlyText(String json) {
@@ -260,7 +291,7 @@ public final class RepeatCore {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject el = arr.optJSONObject(i);
                 if (el == null) return false;
-                if (!el.has("1")) return false;
+                if (!el.has("1")) return false;   
             }
             return true;
         } catch (Throwable t) {

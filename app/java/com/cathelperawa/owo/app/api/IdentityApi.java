@@ -12,6 +12,7 @@ public final class IdentityApi {
 
     private IdentityApi() {}
 
+    
     public static String buddyName(String uin) { return ContactApi.getBuddyName(uin); }
 
     public static String buddyNameByUid(String uid) { return ContactApi.getBuddyNameByUid(uid); }
@@ -20,6 +21,7 @@ public final class IdentityApi {
         return TroopApi.getMemberName(troopUin, uin);
     }
 
+    
     public static String troopName(String troopUin) { return TroopApi.getTroopName(troopUin); }
 
     public static java.util.Map<String, String> allTroopNames() {
@@ -30,6 +32,7 @@ public final class IdentityApi {
         return ContactApi.allBuddies();
     }
 
+    
     public static String uidFromUin(String uin) { return QQUtils.uidFromUin(uin); }
 
     public static String uinFromUid(String uid) { return QQUtils.uinFromUid(uid); }
@@ -63,6 +66,7 @@ public final class IdentityApi {
 
     public static ClassLoader classLoader() { return QQEnv.classLoader(); }
 
+    
     public static Object msgServiceImpl() { return QQEnv.msgServiceImpl(); }
 
     public static Object nativeMsgService() { return QQEnv.nativeMsgService(); }

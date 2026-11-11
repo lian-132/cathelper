@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.bridge;
 
 import com.cathelperawa.owo.app.core.HookLog;
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,7 +27,7 @@ public final class GrayTip {
 
     public static boolean add(int busiId, Object contact, String json) {
         try {
-
+            
             Object svc = QQEnv.nativeMsgService();
             if (svc == null) svc = QQEnv.kernelMsgService();
             if (svc == null) { HookLog.w("灰字：内核服务为空"); return false; }
@@ -54,20 +55,67 @@ public final class GrayTip {
     }
 
     private static Object makeJsonElement(ClassLoader cl, long busiId, String json) {
+        
         for (String cn : new String[]{
                 "com.tencent.qqnt.kernelpublic.nativeinterface.JsonGrayElement",
                 "com.tencent.qqnt.kernel.nativeinterface.JsonGrayElement"}) {
             Class<?> c = null;
             try { c = Class.forName(cn, false, cl); } catch (Throwable ignore) {}
             if (c == null) continue;
-            for (Constructor<?> ct : c.getDeclaredConstructors()) {
-                Class<?>[] ps = ct.getParameterTypes();
-                if (ps.length == 5 && ps[0] == long.class && ps[1] == String.class
-                        && ps[2] == String.class && ps[3] == boolean.class) {
-                    try {
-                        ct.setAccessible(true);
-                        return ct.newInstance(busiId, json, "", Boolean.FALSE, null);
-                    } catch (Throwable t) { HookLog.e("JsonGrayElement 实例化失败 " + cn, t); }
+            Object made = instantiate(c, busiId, json);
+            if (made != null) return made;
+        }
+        
+        try {
+            android.content.Context ctx = QQEnv.appContext();
+            if (ctx != null) {
+                Class<?> c = ClassResolver.resolve(ctx, cl, JSON_GRAY_SPEC);
+                if (c != null) {
+                    HookLog.w("JsonGrayElement 靠自愈找到：" + c.getName());
+                    return instantiate(c, busiId, json);
+                }
+            }
+        } catch (Throwable t) {
+            HookLog.e("JsonGrayElement 自愈失败", t);
+        }
+        return null;
+    }
+
+    private static final ClassResolver.Spec JSON_GRAY_SPEC =
+            new ClassResolver.Spec("graytip.jsonElement")
+                    .candidates("com.tencent.qqnt.kernelpublic.nativeinterface.JsonGrayElement",
+                                "com.tencent.qqnt.kernel.nativeinterface.JsonGrayElement")
+                    .nameMatches("JsonGrayElement$")
+                    .validator(new ClassResolver.Validator() {
+                        @Override public boolean accept(Class<?> c) {
+                            for (Constructor<?> ct : c.getDeclaredConstructors()) {
+                                Class<?>[] ps = ct.getParameterTypes();
+                                if (ps.length == 5 && ps[0] == long.class && ps[1] == String.class
+                                        && ps[2] == String.class && ps[3] == boolean.class) return true;
+                            }
+                            return false;
+                        }
+                    });
+
+    public static String selfTest(ClassLoader cl) {
+        try {
+            Object o = makeJsonElement(cl, 1L, "{\"icon\":\"\",\"content\":\"\"}");
+            return o == null ? null : o.getClass().getName();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static Object instantiate(Class<?> c, long busiId, String json) {
+        for (Constructor<?> ct : c.getDeclaredConstructors()) {
+            Class<?>[] ps = ct.getParameterTypes();
+            if (ps.length == 5 && ps[0] == long.class && ps[1] == String.class
+                    && ps[2] == String.class && ps[3] == boolean.class) {
+                try {
+                    ct.setAccessible(true);
+                    return ct.newInstance(busiId, json, "", Boolean.FALSE, null);
+                } catch (Throwable t) {
+                    HookLog.e("JsonGrayElement 实例化失败 " + c.getName(), t);
                 }
             }
         }
@@ -90,6 +138,9 @@ public final class GrayTip {
         });
     }
 
+    
+
+    
     public static String buildTextTip(String text) {
         try {
             JSONObject root = new JSONObject();
@@ -119,6 +170,9 @@ public final class GrayTip {
         }
     }
 
+    
+
+    
     public static String itemText(String txt) {
         try { return textItem(txt).toString(); } catch (Throwable t) { return null; }
     }
@@ -150,6 +204,9 @@ public final class GrayTip {
         return json != null && add(chatType, peerUid, json);
     }
 
+    
+
+    
     public static String buildRecallTip(String opNick, String opUid, String opUin,
                                         String senderNick, String senderUid, String senderUin,
                                         int msgSeq) {
@@ -159,7 +216,7 @@ public final class GrayTip {
             JSONArray items = new JSONArray();
             items.put(userItem(opNick, opUid, opUin));
             items.put(textItem(" 已撤回 "));
-
+            
             if (senderUid != null && !senderUid.isEmpty() && !senderUid.equals(opUid)
                     && senderNick != null && !senderNick.isEmpty()) {
                 items.put(userItem(senderNick, senderUid, senderUin));
@@ -168,7 +225,7 @@ public final class GrayTip {
             if (msgSeq > 0) {
                 items.put(msgRefItem("一条消息", msgSeq));
             } else {
-
+                
                 items.put(textItem("一条消息"));
             }
             items.put(textItem("喵~"));
@@ -183,7 +240,7 @@ public final class GrayTip {
     private static JSONObject userItem(String nick, String uid, String uin) throws Exception {
         JSONObject o = new JSONObject();
         o.put("type", "qq");
-
+        
         String nm = (nick == null) ? "" : nick.trim();
         if (nm.isEmpty() || nm.startsWith("u_") || nm.matches("\\d+")) {
             nm = "对方";

@@ -3,6 +3,7 @@ package com.cathelperawa.owo.app.feature;
 import android.content.Context;
 
 import com.cathelperawa.owo.app.MsgStore;
+import com.cathelperawa.owo.app.api.EventApi;
 import com.cathelperawa.owo.app.core.HookApi;
 import com.cathelperawa.owo.app.core.HookItem;
 import com.cathelperawa.owo.app.core.HookItemBase;
@@ -20,7 +21,7 @@ public class FeatureRecorder extends HookItemBase {
 
     @Override
     public void entry(ClassLoader cl) {
-        hint("收发消息时");
+        hint("收发消息时");   
         Class<?> target = HookApi.findClass(cl,
                 "com.tencent.qqnt.msg.MsgService$c",
                 "com.tencent.qqnt.msg.MsgService$a");
@@ -47,21 +48,29 @@ public class FeatureRecorder extends HookItemBase {
             hookAfter(m, new com.cathelperawa.owo.app.core.HookApi.Action() {
                 @Override
                 public void call(de.robv.android.xposed.XC_MethodHook.MethodHookParam p) {
-                    if (!isEnabled()) return;
+
+                    
+                    
+                    final boolean enabled = isEnabled();   
                     Object rec = p.args[0];
                     if (rec instanceof List) {
 
+                        
                         List<?> l = (List<?>) rec;
                         int n = 0;
                         for (Object one : l) {
                             if (one == null) continue;
-                            record(one, recv);
+                            EventApi.dispatch(one, recv);
+                            if (enabled) record(one, recv);
                             n++;
                         }
-                        if (n > 0) fire(recv ? "收消息" : "发消息", n);
+                        if (enabled && n > 0) fire(recv ? "收消息" : "发消息", n);   
                     } else if (rec != null) {
-                        record(rec, recv);
-                        fire(recv ? "收消息" : "发消息");
+                        EventApi.dispatch(rec, recv);
+                        if (enabled) {
+                            record(rec, recv);
+                            fire(recv ? "收消息" : "发消息");
+                        }
                     }
                 }
             });
@@ -81,10 +90,12 @@ public class FeatureRecorder extends HookItemBase {
 
             boolean isGroup = peer != null && !peer.startsWith("u_");
 
+            
+
             String peerName;
             if (isGroup) {
                 peerName = Refl.strOr(Refl.field(msgRecord, "peerName"), nick);
-
+                
                 if (peerName == null || peerName.trim().isEmpty()
                         || peerName.matches("\\d{5,}")) {
                     String real = null;
@@ -105,7 +116,7 @@ public class FeatureRecorder extends HookItemBase {
                 }
                 if (peerName == null || peerName.trim().isEmpty()
                         || peerName.equals(peer)) {
-                    peerName = nick;
+                    peerName = nick;   
                 }
             }
             if (peer != null) MsgStore.notePeer(peer, peerName, isGroup);

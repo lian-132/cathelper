@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.ui;
 
 import android.text.Editable;
+import com.cathelperawa.owo.app.core.Bg;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
@@ -37,11 +38,11 @@ public final class ScopePage extends Page {
             }
         }
         if (!need) return;
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 boolean changed = false;
                 try {
-
+                    
                     for (Map.Entry<String, String> e : peers.entrySet()) {
                         final String uid = e.getKey();
                         String label = e.getValue() == null ? "" : e.getValue();
@@ -53,7 +54,7 @@ public final class ScopePage extends Page {
                             changed = true;
                         }
                     }
-
+                    
                     Map<String, String> troopNames =
                             com.cathelperawa.owo.app.bridge.TroopApi.allTroopNames();
                     if (!troopNames.isEmpty()) {
@@ -62,7 +63,7 @@ public final class ScopePage extends Page {
                             String label = e.getValue() == null ? "" : e.getValue();
                             if (!label.startsWith("[群] ")) continue;
                             String cur = label.substring(4);
-                            if (!cur.matches("\\d{5,}")) continue;
+                            if (!cur.matches("\\d{5,}")) continue;   
                             String real = troopNames.get(uid);
                             if (real == null || real.trim().isEmpty()) continue;
                             MsgStore.notePeer(uid, real, true);
@@ -78,20 +79,20 @@ public final class ScopePage extends Page {
                     }
                 });
             }
-        }, "cat-heal-peers").start();
+        }, "cat-heal-peers");
     }
 
     private static String query = "";
-
+    
     private static boolean groupOpen = true;
     private static boolean friendOpen = true;
-
+    
     private static boolean warmed = false;
 
     private void warmLists() {
         if (warmed) return;
         warmed = true;
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 try {
                     com.cathelperawa.owo.app.bridge.TroopApi.allTroopNames();
@@ -104,17 +105,42 @@ public final class ScopePage extends Page {
                     }
                 });
             }
-        }, "cat-warm-lists").start();
+        }, "cat-warm-lists");
     }
 
     @Override
     public View build() {
-        healFriendNames();
-        warmLists();
+        healFriendNames();   
+        warmLists();         
         View[] out = new View[2];
         LinearLayout root = pageRoot("作用范围", "勾选哪些会话猫娘化", out);
 
         root.addView(buildAllCard(), matchWrap(dp(11)));
+
+        
+
+        
+        
+        try {
+            if (com.cathelperawa.owo.app.core.Host.isQQ()) {
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        com.cathelperawa.owo.app.bridge.QqRoster.probe();
+                        com.cathelperawa.owo.app.bridge.HistoryApi.probe();
+                        try {
+                            com.cathelperawa.owo.app.bridge.QqArkApi.probe(
+                                    com.cathelperawa.owo.app.bridge.QQEnv.classLoader());
+                        } catch (Throwable ignore2) {
+                        }
+                        try {
+                            com.cathelperawa.owo.app.bridge.QqDb.dumpTables();
+                        } catch (Throwable ignore3) {
+                        }
+                    }
+                }, "roster-probe").start();
+            }
+        } catch (Throwable ignore) {
+        }
 
         Map<String, String> peers = MsgStore.peers();
         final Map<String, String[]> groupMap = new LinkedHashMap<String, String[]>();
@@ -132,20 +158,22 @@ public final class ScopePage extends Page {
         }
 
         try {
-            Map<String, String> allTroops =
-                    com.cathelperawa.owo.app.bridge.TroopApi.allTroopNames();
+            Map<String, String> allTroops = com.cathelperawa.owo.app.core.Host.isQQ()
+                    ? com.cathelperawa.owo.app.bridge.QqRoster.troops()
+                    : com.cathelperawa.owo.app.bridge.TroopApi.allTroopNames();
             for (Map.Entry<String, String> t : allTroops.entrySet()) {
-
+                
                 groupMap.put(t.getKey(), new String[]{t.getKey(), t.getValue()});
             }
         } catch (Throwable ignore) {
         }
 
         try {
-            Map<String, String> buddies =
-                    com.cathelperawa.owo.app.bridge.ContactApi.allBuddies();
+            Map<String, String> buddies = com.cathelperawa.owo.app.core.Host.isQQ()
+                    ? com.cathelperawa.owo.app.bridge.QqRoster.buddies()
+                    : com.cathelperawa.owo.app.bridge.ContactApi.allBuddies();
             for (Map.Entry<String, String> b : buddies.entrySet()) {
-
+                
                 String uin = b.getKey();
                 String uid = uin;
                 try {
@@ -168,11 +196,14 @@ public final class ScopePage extends Page {
         Collections.sort(groups, byName);
         Collections.sort(friends, byName);
 
-        if (peers.isEmpty()) {
+        
+        if (peers.isEmpty() && groups.isEmpty() && friends.isEmpty()) {
+            final String hn2 = com.cathelperawa.owo.app.core.Host.isQQ() ? "QQ" : "TIM";
             LinearLayout empty = whiteCard(dp(18), 0x8CFFFFFF);
             empty.setPadding(dp(15), dp(18), dp(15), dp(18));
             empty.addView(text("还没有会话记录", 14, 0xFF43587A, true, dp(3)));
-            empty.addView(text("在 TIM 里收发几条消息，群和好友会自动出现在这里", 11, 0xFF8496AE, false, 0));
+            empty.addView(text("在 " + hn2 + " 里收发几条消息，群和好友会自动出现在这里",
+                    11, 0xFF8496AE, false, 0));
             root.addView(empty);
             fadeIn(root);
             return out[0];
@@ -189,6 +220,8 @@ public final class ScopePage extends Page {
         fadeIn(root);
         return out[0];
     }
+
+    
 
     private View buildAllCard() {
         FrameLayout allCard = whiteFrame(dp(18), 0x8CFFFFFF);
@@ -217,6 +250,8 @@ public final class ScopePage extends Page {
         });
         return allCard;
     }
+
+    
 
     private View buildSearchBox(final LinearLayout root,
                                 final List<String[]> groups, final List<String[]> friends) {
@@ -259,7 +294,7 @@ public final class ScopePage extends Page {
                 if (now.equals(query)) return;
                 query = now;
                 clear.setVisibility(now.length() > 0 ? View.VISIBLE : View.GONE);
-
+                
                 rebuildList(root, groups, friends);
             }
         });
@@ -267,7 +302,7 @@ public final class ScopePage extends Page {
     }
 
     private void rebuildList(LinearLayout root, List<String[]> groups, List<String[]> friends) {
-
+        
         int from = -1;
         for (int i = 0; i < root.getChildCount(); i++) {
             if ("cat_list_area".equals(root.getChildAt(i).getTag())) { from = i; break; }
@@ -282,9 +317,11 @@ public final class ScopePage extends Page {
         root.addView(buildGroup("好友", friends, q, false), matchWrap(dp(11)));
     }
 
+    
+
     private View buildGroup(String title, List<String[]> items, final String q,
                             final boolean isGroup) {
-
+        
         final List<String[]> shown = new ArrayList<String[]>();
         for (String[] it : items) {
             if (q.length() == 0 || it[1].toLowerCase().contains(q)
@@ -315,7 +352,7 @@ public final class ScopePage extends Page {
         htp.leftMargin = dp(9);
         TextView t1 = text(title + "（" + shown.size() + "）", 15, 0xFF43587A, true, dp(2));
         ht.addView(t1);
-
+        
         int selCount = 0;
         for (String[] it : shown) if (MsgStore.allows(it[0])) selCount++;
         String subTxt = q.length() > 0
@@ -331,7 +368,7 @@ public final class ScopePage extends Page {
 
         head.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                if (q.length() > 0) return;
+                if (q.length() > 0) return;      
                 if (isGroup) groupOpen = !groupOpen; else friendOpen = !friendOpen;
                 press(v);
                 host.setPageView(build());
@@ -385,7 +422,7 @@ public final class ScopePage extends Page {
                 }
                 dot.setChecked(MsgStore.allows(uid));
                 press(v);
-
+                
                 host.setPageView(build());
             }
         });
@@ -398,7 +435,7 @@ public final class ScopePage extends Page {
     }
 
     private static String friendlyName(String uid, String name) {
-
+        
         if (name != null && name.matches("\\d{5,}")) return name;
         if (name != null && name.length() > 0 && !name.equals(uid)) {
             if (!(name.startsWith("u_") && name.length() > 16)) return name;

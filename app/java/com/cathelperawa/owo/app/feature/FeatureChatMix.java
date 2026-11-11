@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
+import com.cathelperawa.owo.app.core.SelfCheckResult;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -29,13 +31,21 @@ import java.util.WeakHashMap;
 import de.robv.android.xposed.XC_MethodHook;
 
 @HookItem(name = "文字表情复合消息", path = "聊天与消息/文字表情复合消息",
-        description = "图片/表情包选完先插进输入框，和文字一起编辑再发送", order = 46)
+        description = "图片/表情包选完先插进输入框，和文字一起编辑再发送", order = 46,
+        priority = LoadPriority.DEFERRED)
 public class FeatureChatMix extends HookItemBase {
+
+    @Override
+    protected void check(SelfCheckResult.Checker c) {
+        c.cls("输入框", CLS_EDIT_TEXT);
+        c.cls("发送 VM", CLS_SEND_VM);
+        c.cls("相册选择", "com.tencent.qqnt.aio.part.SendPicPart");
+    }
 
     private static final String TAG = "[图文] ";
 
     public static final String K_MIX = "chat_mixsend";
-
+    
     public static final String K_ALWAYS = "chat_mixsend_always";
 
     private static final String[] CLS_SEND_PIC = {
@@ -61,6 +71,8 @@ public class FeatureChatMix extends HookItemBase {
 
     private static final Handler UI = new Handler(Looper.getMainLooper());
 
+    
+
     private static Context c() { return HookItemFactory.context(); }
 
     public static boolean on() { return HookConfig.getBoolean(c(), K_MIX, false); }
@@ -71,6 +83,7 @@ public class FeatureChatMix extends HookItemBase {
 
     public static void resetAlways() { setAlways(false); }
 
+    
     public static boolean isReplying() { return REPLYING; }
 
     public static void setReplying(boolean v) { REPLYING = v; }
@@ -115,7 +128,7 @@ public class FeatureChatMix extends HookItemBase {
             String cn = ch.getClass().getName();
             if (cn.contains("reply") || cn.contains("Reply")) return true;
             if (host.getTag() instanceof String) return false;
-
+            
             java.lang.reflect.Field[] fs = host.getClass().getDeclaredFields();
             for (java.lang.reflect.Field f : fs) {
                 Class<?> t = f.getType();
@@ -126,7 +139,7 @@ public class FeatureChatMix extends HookItemBase {
                 if (v == null) continue;
                 String fcn = v.getClass().getName();
                 if (!fcn.contains("reply") && !fcn.contains("Reply")) continue;
-
+                
                 try {
                     java.lang.reflect.Method m = android.view.View.class
                             .getDeclaredMethod("hasOnLayoutChangeListeners");
@@ -141,7 +154,10 @@ public class FeatureChatMix extends HookItemBase {
 
     public static EditText edit() { return currentEdit(); }
 
+    public boolean mainProcessOnly() { return true; }
+
     @Override
+
     public String switchKey() { return K_MIX; }
 
     private static void log(String s) {
@@ -154,8 +170,9 @@ public class FeatureChatMix extends HookItemBase {
         try {
             Context c = c();
             if (c == null) return;
-            java.io.File f = new java.io.File(c.getFilesDir(), "cathelper/mixdiag.txt");
-            f.getParentFile().mkdirs();
+            java.io.File d = com.cathelperawa.owo.app.core.DataDir.global("diag");
+            if (d == null) return;
+            java.io.File f = new java.io.File(d, "mixdiag.txt");
             java.io.FileWriter w = new java.io.FileWriter(f, true);
             w.write(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
                     .format(new java.util.Date()) + "  " + s + "\n");
@@ -164,11 +181,13 @@ public class FeatureChatMix extends HookItemBase {
         }
     }
 
+    
+
     @Override
     public void entry(ClassLoader cl) {
         SHARED = this;
         log("开关 chat_mixsend=" + on() + " 图文模式=" + always());
-        expect(9);
+        expect(9);              
         hint("在聊天里选图/表情包时");
         int ok = 0;
         ok += hookSafe("相册选图", new HookStep() { public boolean run() throws Throwable { return hookSendPic(cl); } });
@@ -181,7 +200,7 @@ public class FeatureChatMix extends HookItemBase {
         ok += hookSafe("aioContext", new HookStep() { public boolean run() throws Throwable { return hookAioContext(cl); } });
         ok += hookSafe("回复态", new HookStep() { public boolean run() throws Throwable { return hookReplyState(cl); } });
         log("安装完成 " + ok + "/9");
-        hit(ok);
+        hit(ok);                
         if (ok == 0) {
             fail("文字表情复合消息：9 项全部未挂上（TIM 版本可能变了）");
         } else if (ok < 9) {
@@ -207,6 +226,8 @@ public class FeatureChatMix extends HookItemBase {
         }
     }
 
+    
+
     private boolean hookSendPic(ClassLoader cl) {
         Class<?> cls = HookApi.findClass(cl, CLS_SEND_PIC);
         if (cls == null) { log("未找到 SendPicPart"); return false; }
@@ -227,7 +248,7 @@ public class FeatureChatMix extends HookItemBase {
         if (it == null) return;
         Object ar = it.getParcelableExtra("ALBUM_RESULT");
         if (ar == null) { log("q4: 无 ALBUM_RESULT（不是相册返回）"); return; }
-
+        
         Object need = Refl.call(ar, "b");
         log("q4: needSend=" + need);
         if (!Boolean.TRUE.equals(need)) return;
@@ -255,11 +276,11 @@ public class FeatureChatMix extends HookItemBase {
             log("插入 0 张 → 回落原发送");
             return;
         }
-
+        
         fire("插入图片");
-
+        
         p.setResult(null);
-
+        
         Object text = Refl.call(ar, "a");
         if (text instanceof String && ((String) text).length() > 0) {
             appendText(et, (String) text);
@@ -267,6 +288,12 @@ public class FeatureChatMix extends HookItemBase {
         log("已插入 " + n + " 张图片，原发送已拦下");
         toast("图已经塞进框里喵～");
     }
+
+    
+
+    
+
+    
 
     private boolean hookAlbumMediaEvent(ClassLoader cl) {
         Class<?> vm = HookApi.findClass(cl, CLS_SEND_VM);
@@ -280,7 +307,7 @@ public class FeatureChatMix extends HookItemBase {
                 try {
                     if (!on()) { log("AlbumMedia: 开关没开，放行"); return; }
                     Object e = p.args[0];
-                    Object listObj = Refl.call(e, "a");
+                    Object listObj = Refl.call(e, "a");     
                     if (!(listObj instanceof List)) { log("AlbumMedia: 取不到列表"); return; }
                     List<?> list = (List<?>) listObj;
                     log("AlbumMedia: 拦到 " + list.size() + " 张，输入框=" + (currentEdit() != null)
@@ -294,14 +321,14 @@ public class FeatureChatMix extends HookItemBase {
                     for (Object item : list) {
                         Object path = Refl.call(item, "a");
                         if (!(path instanceof String) || ((String) path).length() == 0) {
-
+                            
                             Object uri = Refl.call(item, "c");
                             if (uri != null) path = uri.toString();
                         }
                         if (!(path instanceof String)) { log("AlbumMedia: item 路径不是字符串"); continue; }
                         String s = (String) path;
                         log("AlbumMedia: 路径=" + s);
-
+                        
                         if (s.startsWith("content://")) { log("AlbumMedia: content:// 跳过"); continue; }
                         boolean gif = s.toLowerCase().endsWith(".gif");
                         if (insert(s, null, gif)) n++;
@@ -371,6 +398,12 @@ public class FeatureChatMix extends HookItemBase {
         return true;
     }
 
+    
+
+    
+
+    
+
     private boolean hookMediaSendEvent(ClassLoader cl) {
         Class<?> vm = HookApi.findClass(cl, CLS_SEND_VM);
         Class<?> ev = HookApi.findClass(cl,
@@ -389,7 +422,7 @@ public class FeatureChatMix extends HookItemBase {
                         log("Media: 带文字一起发，交给原流程");
                         return;
                     }
-                    Object listObj = Refl.call(e, "b");
+                    Object listObj = Refl.call(e, "b");     
                     if (!(listObj instanceof List)) { log("Media: 取不到列表"); return; }
                     List<?> list = (List<?>) listObj;
                     log("Media: 拦到 " + list.size() + " 张，输入框=" + (currentEdit() != null)
@@ -428,6 +461,8 @@ public class FeatureChatMix extends HookItemBase {
         return true;
     }
 
+    
+
     private boolean hookPicEmotion(ClassLoader cl) {
         Class<?> vm = HookApi.findClass(cl, CLS_SEND_VM);
         Class<?> ev = HookApi.findClass(cl,
@@ -440,7 +475,7 @@ public class FeatureChatMix extends HookItemBase {
                 try {
                     if (!on()) return;
                     Object e = p.args[0];
-                    Object path = Refl.call(e, "b");
+                    Object path = Refl.call(e, "b");     
                     if (!(path instanceof String) || ((String) path).length() == 0) return;
                     EditText et = currentEdit();
                     if (!shouldInsert(et)) return;
@@ -456,6 +491,8 @@ public class FeatureChatMix extends HookItemBase {
         log("已挂 表情包 → " + m.getName());
         return true;
     }
+
+    
 
     private boolean hookFace(ClassLoader cl) {
         Class<?> vm = HookApi.findClass(cl, CLS_SEND_VM);
@@ -499,14 +536,18 @@ public class FeatureChatMix extends HookItemBase {
                 }
             }
         } catch (Throwable ignore) {}
-
+        
         return "\u0014" + qsid;
     }
+
+    
 
     private static EditText lastEdit;
 
     private static EditText currentEdit() {
 
+        
+        
         try {
             android.app.Activity a = com.cathelperawa.owo.app.bridge.QQEnv.topActivity();
             if (a != null) {
@@ -561,9 +602,9 @@ public class FeatureChatMix extends HookItemBase {
         }
         et.setOnLongClickListener(new android.view.View.OnLongClickListener() {
             @Override public boolean onLongClick(android.view.View v) {
-                if (!on()) return false;
+                if (!on()) return false;       
                 showMenu((EditText) v);
-                return true;
+                return true;                   
             }
         });
     }
@@ -602,6 +643,9 @@ public class FeatureChatMix extends HookItemBase {
         } });
     }
 
+    
+
+    
     private static boolean shouldInsert(EditText et) {
         if (et == null) return false;
         if (always()) return true;
@@ -671,6 +715,13 @@ public class FeatureChatMix extends HookItemBase {
             if (span == null) { log("缩略图生成失败  " + path); return false; }
             log("span 类型=" + span.getClass().getName());
 
+            
+
+            
+
+            
+
+            
             SpannableStringBuilder sb = new SpannableStringBuilder();
             sb.append('\u200B');
             int imgStart = sb.length();
@@ -678,6 +729,8 @@ public class FeatureChatMix extends HookItemBase {
             sb.setSpan(span, imgStart, sb.length(), 33);
             sb.append('\n');
 
+            
+            
             int end = ed.length();
             ed.replace(end, end, sb);
             Selection.setSelection(ed, end + sb.length());
@@ -719,6 +772,9 @@ public class FeatureChatMix extends HookItemBase {
         }
     }
 
+    
+
+    
     private boolean enterFullScreen() {
         try {
             if (aioCtx == null) {
@@ -775,12 +831,17 @@ public class FeatureChatMix extends HookItemBase {
         return true;
     }
 
+    
+
+    
+
+    
     private boolean hookReplyState(ClassLoader cl) {
         Class<?> dm = HookApi.findClass(cl, "com.tencent.input.base.mvicompat.DelegateMediator");
         if (dm == null) { log("未找到 DelegateMediator"); return false; }
         int n = 0;
         for (final Method m : dm.getDeclaredMethods()) {
-
+            
             if (m.getReturnType() != void.class) continue;
             if (m.isSynthetic() || m.isBridge()) continue;
             if (java.lang.reflect.Modifier.isAbstract(m.getModifiers())) continue;
@@ -791,7 +852,7 @@ public class FeatureChatMix extends HookItemBase {
                     Object a = (p.args != null && p.args.length > 0) ? p.args[0] : null;
                     if (a == null) return;
                     String cn = a.getClass().getName();
-
+                    
                     if (cn.endsWith("SetReplyUIState")) {
                         QUOTING = true;
                         diag("引用态 = true（" + cn + "）");
@@ -820,11 +881,17 @@ public class FeatureChatMix extends HookItemBase {
         } catch (Throwable ignore) {}
     }
 
+    
+
+    
+    
     public static boolean insertPic(final String path, final boolean isGif) {
         final FeatureChatMix f = SHARED;
         if (f == null) { log("功能未加载，无法插图"); return false; }
         final EditText et = currentEdit();
         if (et == null) { log("没有输入框，无法插入"); return false; }
+
+        
 
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             try { return f.insert(path, null, isGif); }

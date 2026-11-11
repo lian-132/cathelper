@@ -11,11 +11,13 @@ public @interface HookItem {
 
     String name();
 
+    String[] hosts() default {"tim"};
+
     String path() default "未分组";
 
     String description() default "";
 
-    boolean defaultEnabled() default false;
+    boolean defaultEnabled() default true;
 
     int order() default 100;
 

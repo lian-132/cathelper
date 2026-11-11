@@ -28,17 +28,22 @@ public final class ImageGrabber {
         return d;
     }
 
+    
+
+    
     public static final class Source {
         public String kind = "none";
-
+        
         public String path;
-
+        
         public String url;
-
+        
         public String element = "";
-
+        
         public String key = "";
-
+        
+        public String md5;
+        
         public Object raw;
 
         @Override public String toString() {
@@ -51,15 +56,76 @@ public final class ImageGrabber {
         Source s = new Source();
         if (record == null) return s;
         Object els = Refl.field(record, "elements");
-        if (!(els instanceof List)) return s;
-        for (Object el : (List<?>) els) {
-            Source one = fromElement(el);
-            if (one != null) return one;
+        if (els instanceof List) {
+            for (Object el : (List<?>) els) {
+                Source one = fromElement(el);
+                if (one != null && !"none".equals(one.kind)) return one;
+            }
+        }
+
+        
+        
+        Source fromRec = fromRecords(record, 0);
+        if (fromRec != null && !"none".equals(fromRec.kind)) {
+            fromRec.element = "records/" + fromRec.element;
+            return fromRec;
+        }
+
+        Source fromCache = fromReplyCache(record);
+        if (fromCache != null && !"none".equals(fromCache.kind)) {
+            fromCache.element = "msgcache/" + fromCache.element;
+            return fromCache;
         }
         return s;
     }
 
+    private static Source fromReplyCache(Object record) {
+        try {
+            Object els = Refl.field(record, "elements");
+            if (!(els instanceof List)) return null;
+            for (Object el : (List<?>) els) {
+                if (el == null) continue;
+                Object rep = Refl.field(el, "replyElement");
+                if (rep == null) continue;
+                long id = Refl.fieldLong(rep, "sourceMsgIdInRecords", 0);
+                Object orig = MsgCache.get(id);
+                if (orig == null) continue;
+                Object oels = Refl.field(orig, "elements");
+                if (!(oels instanceof List)) continue;
+                for (Object oel : (List<?>) oels) {
+                    Source one = fromElement(oel, 1);
+                    if (one != null && !"none".equals(one.kind)) return one;
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+        return null;
+    }
+
+    private static Source fromRecords(Object record, int depth) {
+        if (record == null || depth > 2) return null;
+        Object recs = Refl.field(record, "records");
+        if (!(recs instanceof List)) return null;
+        for (Object r : (List<?>) recs) {
+            if (r == null) continue;
+            Object els = Refl.field(r, "elements");
+            if (els instanceof List) {
+                for (Object el : (List<?>) els) {
+                    Source one = fromElement(el, 1);
+                    if (one != null && !"none".equals(one.kind)) return one;
+                }
+            }
+            Source deep = fromRecords(r, depth + 1);
+            if (deep != null && !"none".equals(deep.kind)) return deep;
+        }
+        return null;
+    }
+
     public static Source fromElement(Object el) {
+        return fromElement(el, 0);
+    }
+
+    private static Source fromElement(Object el, int depth) {
         if (el == null) return null;
 
         Object mf = Refl.field(el, "marketFaceElement");
@@ -67,7 +133,7 @@ public final class ImageGrabber {
             Source s = new Source();
             s.element = "marketFaceElement";
             s.raw = mf;
-
+            
             for (String fn : new String[]{"url", "staticFaceUrl", "dynamicFaceUrl", "bigUrl"}) {
                 Object u = Refl.field(mf, fn);
                 if (u instanceof String && ((String) u).length() > 0) {
@@ -89,6 +155,8 @@ public final class ImageGrabber {
             s.element = "picElement";
             s.raw = pic;
             s.path = firstExisting(pic, new String[]{"filePath", "localPath", "sourcePath", "path"});
+            String md5 = firstString(pic, new String[]{"md5HexStr", "md5"});
+            if (md5 != null && md5.length() >= 8) s.md5 = md5;
             s.url = fixUrl(firstString(pic, new String[]{"originImageUrl", "bigUrl", "url"}));
             for (String fn : new String[]{"md5HexStr", "md5", "fileName", "picSubType"}) {
                 Object k = Refl.field(pic, fn);
@@ -112,20 +180,124 @@ public final class ImageGrabber {
                 return s;
             }
         }
+
+        
+        
+        if (depth < 3) {
+            Object rep = Refl.field(el, "replyElement");
+            if (rep != null) {
+                Object elems = Refl.field(rep, "sourceMsgTextElems");
+                if (elems instanceof List) {
+                    for (int i = 0; i < ((List<?>) elems).size(); i++) {
+                        Source one = fromElement(((List<?>) elems).get(i), depth + 1);
+                        if (one != null && !"none".equals(one.kind)) {
+                            one.element = "reply:" + one.element;
+                            return one;
+                        }
+                    }
+                }
+            }
+        }
         return null;
     }
 
+    
+
+    
     public static byte[] bytes(Source s) {
         if (s == null) return null;
+        byte[] best = null;
+        String from = "";
+
         if (s.path != null) {
             byte[] b = readFile(s.path);
-            if (b != null && b.length > 0) return b;
+            if (b != null && b.length > 0) {
+                best = b;
+                from = "元素路径";
+            }
         }
-        if (s.url != null) {
-            byte[] b = http(s.url);
-            if (b != null && b.length > 0) return b;
+
+        if (s.md5 != null) {
+            try {
+                java.io.File f = findInCache(s.md5);
+                if (f != null && f.exists()) {
+                    byte[] b = readFile(f.getAbsolutePath());
+                    if (b != null && b.length > 0) {
+                        HookLog.i("图片从本地缓存命中 " + f.getName());
+                        if (best == null) from = "缓存";
+                        best = better(best, b);
+                    }
+                } else {
+                    com.cathelperawa.owo.app.ai.AiDebug.log("  · 图片: md5 缓存未命中 " + s.md5);
+                }
+            } catch (Throwable t) {
+                com.cathelperawa.owo.app.ai.AiDebug.log("  · 图片: 缓存查找异常 " + t);
+            }
+        } else {
+            com.cathelperawa.owo.app.ai.AiDebug.log("  · 图片: 没有 md5，跳过缓存");
         }
-        return null;
+
+        
+        
+        boolean needNet = best == null || tooSmall(best);
+        if (needNet && s.url != null) {
+            String[] cands = RKeyHolder.candidates(s.url);
+            if (cands.length == 0) cands = new String[]{s.url};
+            int okCount = 0;
+            for (int i = 0; i < cands.length; i++) {
+                byte[] b = http(cands[i]);
+                if (b == null || b.length == 0) {
+                    if (i == 0) HookLog.w("图片下载候选#" + i + " 失败 " + head(cands[i]));
+                    continue;
+                }
+                okCount++;
+                if (i > 0) HookLog.i("图片用候选#" + i + " 下载成功");
+                if (best == null || b.length > best.length) {
+                    from = "网络候选#" + i;
+                }
+                best = better(best, b);
+                if (!tooSmall(best)) break;      
+            }
+
+            if (okCount == 0) RKeyHolder.forget(RKeyHolder.fileIdOf(s.url));
+        }
+
+        if (best != null) {
+            com.cathelperawa.owo.app.ai.AiDebug.log("  · 图片: 取到 " + (best.length / 1024)
+                    + "KB（来源 " + from + "，" + describeSize(best) + "）");
+        }
+        return best;
+    }
+
+    private static boolean tooSmall(byte[] b) {
+        if (b == null) return true;
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(b, 0, b.length, o);
+            int big = Math.max(o.outWidth, o.outHeight);
+            if (big <= 0) return b.length < 60000;
+            return big < 480;
+        } catch (Throwable t) {
+            return b.length < 60000;
+        }
+    }
+
+    private static String describeSize(byte[] b) {
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(b, 0, b.length, o);
+            return o.outWidth + "x" + o.outHeight;
+        } catch (Throwable t) {
+            return "尺寸未知";
+        }
+    }
+
+    private static byte[] better(byte[] a, byte[] b) {
+        if (b == null || b.length == 0) return a;
+        if (a == null) return b;
+        return b.length > a.length ? b : a;
     }
 
     public static Bitmap bitmap(Source s) {
@@ -164,23 +336,78 @@ public final class ImageGrabber {
         }
     }
 
+    
+
+    
     public static File findInCache(String md5) {
         if (md5 == null || md5.length() < 8) return null;
+        String upper = md5.toUpperCase();
+        String pre = upper.substring(0, 4);
         try {
-            File base = QQEnv.appContext().getFilesDir();
+            android.content.Context ctx = QQEnv.appContext();
+            java.io.File app = ctx.getFilesDir().getParentFile();   
+
+            
+            java.io.File fast = new java.io.File(app, "shared_prefs/.configfs/fast_cache");
+            java.io.File rich = new java.io.File(ctx.getFilesDir(), "nt_qq_rich_media");
+            java.io.File ext = ctx.getExternalFilesDir(null);
+
+            
+            
+            java.util.ArrayList<java.io.File> hits = new java.util.ArrayList<java.io.File>();
+            collectMd5(fast, pre, upper, 0, hits);
+            collectMd5(rich, pre, upper, 0, hits);
+            if (ext != null) collectMd5(new java.io.File(ext, "Tencent"), pre, upper, 0, hits);
+            java.io.File hit = biggest(hits);
+            if (hit != null) {
+                HookLog.i("图片缓存命中 " + hit.getAbsolutePath() + " (" + hit.length() / 1024 + "KB)");
+                return hit;
+            }
+
+            java.io.File base = ctx.getFilesDir();
             String[] subs = new String[]{
-                    "photo", "Photo", "pic", "images", "cache", "chatpic", "flashpic",
-                    "nt_qq_rich_media", "Qzone", "HotPic", ""
+                    "photo", "Photo", "pic", "images", "cache", "chatpic", "flashpic", ""
             };
             for (String sub : subs) {
-                File d = sub.isEmpty() ? base : new File(base, sub);
-                File hit = deepFind(d, md5, 0);
-                if (hit != null) return hit;
+                java.io.File d = sub.isEmpty() ? base : new java.io.File(base, sub);
+                java.io.File f2 = deepFind(d, md5, 0);
+                if (f2 != null) return f2;
             }
         } catch (Throwable t) {
             HookLog.w("findInCache 失败 " + t);
         }
         return null;
+    }
+
+    private static void collectMd5(java.io.File d, String prefix, String md5Upper,
+                                   int depth, java.util.List<java.io.File> out) {
+        if (d == null || depth > 8 || !d.isDirectory()) return;
+        java.io.File[] ls = d.listFiles();
+        if (ls == null) return;
+        for (java.io.File f : ls) {
+            if (!f.isDirectory()) continue;
+            if (!f.getName().equalsIgnoreCase(prefix)) continue;
+            java.io.File[] inner = f.listFiles();
+            if (inner == null) continue;
+            for (java.io.File x : inner) {
+                
+                if (x.isFile() && x.getName().toUpperCase().startsWith(md5Upper)) out.add(x);
+            }
+        }
+        for (java.io.File f : ls) {
+            if (!f.isDirectory()) continue;
+            if (f.getName().equalsIgnoreCase(prefix)) continue;
+            collectMd5(f, prefix, md5Upper, depth + 1, out);
+        }
+    }
+
+    private static java.io.File biggest(java.util.List<java.io.File> list) {
+        if (list == null || list.isEmpty()) return null;
+        java.io.File best = null;
+        for (java.io.File f : list) {
+            if (best == null || f.length() > best.length()) best = f;
+        }
+        return best;
     }
 
     private static File deepFind(File d, String key, int depth) {
@@ -250,6 +477,8 @@ public final class ImageGrabber {
                 || (s.length() > 16 && !s.contains("."));
     }
 
+    
+
     public static byte[] readFile(String p) {
         try {
             File f = new File(p);
@@ -291,7 +520,7 @@ public final class ImageGrabber {
                 while ((n = in.read(buf)) > 0) {
                     bos.write(buf, 0, n);
                     total += n;
-                    if (total > 24 * 1024 * 1024) break;
+                    if (total > 24 * 1024 * 1024) break;   
                 }
             }
             return bos.toByteArray();
@@ -299,6 +528,11 @@ public final class ImageGrabber {
             HookLog.w("图片下载失败 " + t);
             return null;
         }
+    }
+
+    private static String head(String u) {
+        if (u == null) return "";
+        return u.length() <= 120 ? u : u.substring(0, 120) + "…";
     }
 
     public static String fixUrl(String u) {

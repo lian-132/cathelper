@@ -8,7 +8,7 @@ import java.util.List;
 
 public final class CatMsg {
 
-    private final Object raw;
+    private final Object raw;   
 
     private CatMsg(Object raw) {
         this.raw = raw;
@@ -23,6 +23,9 @@ public final class CatMsg {
         return raw;
     }
 
+    
+
+    
     public ChatType chatType() {
         return ChatType.of(Refl.i32(Refl.field(raw, "chatType"), 0));
     }
@@ -41,7 +44,7 @@ public final class CatMsg {
         ChatType t = chatType();
         String uid = peerUid();
         if (!t.isKnown() || uid.isEmpty()) {
-
+            
             String uin = peerUin();
             if (uin.isEmpty()) return null;
             try {
@@ -85,6 +88,9 @@ public final class CatMsg {
         return Refl.lng(Refl.field(raw, "msgSeq"), 0);
     }
 
+    
+
+    
     @SuppressWarnings("unchecked")
     public List<Object> elements() {
         Object els = Refl.field(raw, "elements");
@@ -113,6 +119,9 @@ public final class CatMsg {
         return "";
     }
 
+    
+
+    
     public boolean isGroup() {
         return chatType().isGroup();
     }
@@ -125,6 +134,9 @@ public final class CatMsg {
         return raw != null && chatType().isKnown();
     }
 
+    
+
+    
     private static Object unwrap(Object o) {
         if (o == null) return null;
         try {

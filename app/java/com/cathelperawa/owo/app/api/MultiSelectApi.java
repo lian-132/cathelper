@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public final class MultiSelectApi {
-
+    
     public static final String CLS_BAR_VB_QQ = "com.tencent.mobileqq.aio.input.multiselect.MultiSelectBarVB";
     public static final String CLS_BAR_VB_TIM = "com.tencent.tim.aio.inputbar.TimMultiSelectBarVB";
 
@@ -41,7 +41,7 @@ public final class MultiSelectApi {
         if (classLoader == null) {
             return null;
         }
-
+        
         if (classExists(classLoader, CLS_BAR_VB_TIM)) {
             return CLS_BAR_VB_TIM;
         }

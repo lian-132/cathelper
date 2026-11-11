@@ -1,4 +1,6 @@
-
+/* 猫娘助手 · 控制台原型
+   风格参考：浅蓝/粉马卡龙渐变 + 大圆角卡片 + 内嵌猫娘插画
+   交互：按压回弹、波纹、开关状态切换 */
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
@@ -30,7 +32,7 @@ html,body{
 }
 @keyframes fadeUp{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;} }
 
-
+/* ---------- 顶栏 ---------- */
 .topbar{
   display:flex; align-items:center; justify-content:space-between;
   padding:2px 4px 4px;
@@ -47,7 +49,7 @@ html,body{
 .icon-btn svg{ width:18px; height:18px; fill:var(--blue-deep); }
 .icon-btn:active{ transform:scale(.88) rotate(90deg); background:#e9f2ff; }
 
-
+/* ---------- 通用卡片 ---------- */
 .card{
   background:var(--card);
   border-radius:var(--radius);
@@ -56,7 +58,7 @@ html,body{
   border:1px solid rgba(255,255,255,.7);
 }
 
-
+/* 点击反馈：回弹 + 波纹 */
 .press{ position:relative; overflow:hidden; cursor:pointer;
   transition:transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .16s, background .2s; }
 .press:active{ transform:scale(.96); box-shadow:0 3px 10px rgba(120,150,200,.22); }
@@ -69,7 +71,7 @@ html,body{
 }
 @keyframes rip{ to{ transform:scale(2.6); opacity:0; } }
 
-
+/* ---------- 状态大卡 ---------- */
 .hero{
   position:relative; min-height:172px; overflow:hidden;
   display:flex; align-items:flex-end;
@@ -96,10 +98,10 @@ html,body{
 .hero-dots i{ width:7px; height:7px; border-radius:50%; background:var(--blue-deep); opacity:.35; }
 .hero-dots i:first-child{ opacity:1; }
 
-
+/* 倾斜跟随（JS 设置角度） */
 .tilt{ transform-style:preserve-3d; }
 
-
+/* ---------- 两列药丸 ---------- */
 .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .pill{
   display:flex; align-items:center; gap:10px;
@@ -115,7 +117,7 @@ html,body{
 .pill-text em{ display:block; font-size:11px; color:var(--ink-soft); font-style:normal; margin-top:2px; }
 .pill.on .pill-text em{ color:#7fa5e6; font-weight:700; }
 
-
+/* ---------- 不等分两列 ---------- */
 .grid2-uneven{ display:grid; grid-template-columns:1.35fr 1fr; gap:12px; margin-bottom:8px; }
 .stack{ display:flex; flex-direction:column; gap:12px; }
 .wide{
@@ -165,7 +167,7 @@ html,body{
   background:rgba(255,255,255,.9); color:var(--ink-soft); }
 .big.on .big-state{ background:linear-gradient(135deg,#a8c8ff,#ffc4dc); color:#fff; }
 
-
+/* ---------- 图标网格 ---------- */
 .icon-grid{
   display:grid; grid-template-columns:repeat(4,1fr);
   gap:18px 8px; padding:6px 2px;
@@ -190,7 +192,7 @@ html,body{
 }
 .icon-cell:active .ic{ transform:scale(.86); box-shadow:0 2px 6px rgba(140,170,220,.28); }
 
-
+/* ---------- 关于 ---------- */
 .about{ padding:16px; }
 .about-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .about-title{ font-size:16px; font-weight:800; }
@@ -206,7 +208,7 @@ html,body{
 .about-row:first-of-type{ border-top:0; }
 .about-row b{ color:#7fa5e6; }
 
-
+/* ---------- Toast ---------- */
 .toast{
   position:fixed; left:50%; bottom:52px; transform:translate(-50%,20px);
   background:rgba(255,255,255,.95); color:#6f86a8;
@@ -216,6 +218,6 @@ html,body{
 }
 .toast.show{ opacity:1; transform:translate(-50%,0); }
 
-
+/* 页面切换/进入动画 */
 .screen-in{ animation:screenIn .35s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes screenIn{ from{opacity:0; transform:translateX(16px);} to{opacity:1; transform:none;} }

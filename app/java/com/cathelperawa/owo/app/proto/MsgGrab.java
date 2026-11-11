@@ -11,9 +11,9 @@ public final class MsgGrab {
     private MsgGrab() {}
 
     public static final class Result {
-        public String kind;
-        public String content;
-        public String extra;
+        public String kind;     
+        public String content;  
+        public String extra;    
         public JSONObject toJson() {
             JSONObject o = new JSONObject();
             try {

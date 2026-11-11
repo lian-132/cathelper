@@ -29,6 +29,9 @@ public final class ReflectCache {
 
     private static volatile int boundModuleVersion = -1;
 
+    
+
+    
     public static void bindVersion(int hostVersion) {
         if (hostVersion <= 0) return;
         if (boundVersion == hostVersion) return;
@@ -57,6 +60,9 @@ public final class ReflectCache {
         return boundModuleVersion;
     }
 
+    
+
+    
     public static Method method(String key) {
         Member m = MEMBERS.get(key);
         return m instanceof Method ? (Method) m : null;
@@ -100,7 +106,7 @@ public final class ReflectCache {
     private static void put(String key, Member m) {
         if (key == null || m == null) return;
         if (MEMBERS.size() >= MAX) {
-
+            
             MEMBERS.clear();
         }
         MEMBERS.put(key, m);
@@ -114,6 +120,9 @@ public final class ReflectCache {
         return MEMBERS.size();
     }
 
+    
+
+    
     public static String key(String kind, Class<?> cls,
                              Class<?> ret, Class<?>... params) {
         StringBuilder sb = new StringBuilder(64);

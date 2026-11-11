@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.bridge;
 
+import com.cathelperawa.owo.app.MsgStore;
 import com.cathelperawa.owo.app.core.HookLog;
 
 import java.lang.reflect.InvocationHandler;
@@ -12,8 +13,9 @@ public final class TimNet {
 
     private TimNet() {}
 
-    private static Class<?> CLS_SENDER;
-    private static Class<?> CLS_LISTENER;
+    private static Class<?> CLS_SENDER;    
+    private static Class<?> CLS_LISTENER;  
+    private static volatile Method M_WITH; 
     private static boolean inited;
 
     public interface Sink {
@@ -75,6 +77,16 @@ public final class TimNet {
         return CLS_SENDER != null && CLS_LISTENER != null;
     }
 
+    public static void prewarm() {
+        ensureInit();
+        if (CLS_SENDER == null) return;
+        if (M_WITH == null) {
+            Method m = findMethod(CLS_SENDER, "with", 4);
+            if (m != null) { m.setAccessible(true); M_WITH = m; }
+        }
+        HookLog.i("TimNet 预热: with=" + (M_WITH != null) + " listener=" + (CLS_LISTENER != null));
+    }
+
     public static boolean request(String url, Map<String, String> params, final Sink sink) {
         ensureInit();
         if (!ready()) { HookLog.w("TimNet: 环境不全"); return false; }
@@ -84,9 +96,12 @@ public final class TimNet {
             Map<String, String> p = (params instanceof LinkedHashMap)
                     ? params : new LinkedHashMap<String, String>(params);
 
-            Method with = findMethod(CLS_SENDER, "with", 4);
+            Method with = M_WITH;
+            if (with == null) {
+                with = findMethod(CLS_SENDER, "with", 4);
+                if (with != null) { with.setAccessible(true); M_WITH = with; }
+            }
             if (with == null) { HookLog.w("TimNet: 没有 with/4"); return false; }
-            with.setAccessible(true);
             Object sender = with.invoke(null, QQEnv.appContext(), url, p, uin);
             if (sender == null) { HookLog.w("TimNet: with 返回 null"); return false; }
             HookLog.i("TimNet sender = " + sender.getClass().getName());
@@ -116,7 +131,7 @@ public final class TimNet {
                 if (m.getParameterTypes().length != 1) continue;
                 m.setAccessible(true);
                 Object r = m.invoke(o, arg);
-                return r == null ? o : r;
+                return r == null ? o : r;   
             }
             for (Method m : o.getClass().getDeclaredMethods()) {
                 if (!m.getName().equals(name)) continue;
@@ -147,6 +162,11 @@ public final class TimNet {
                         Object j = (args != null && args.length > 1) ? args[1] : null;
                         String js = (j == null) ? null : String.valueOf(j);
                         HookLog.i("TimNet 回调 " + n + " : " + s1);
+                        if (!"onSuccess".equals(n)) {
+
+                            try { MsgStore.add("[TimNet失败] " + n + "\n  arg0=" + s1
+                                    + "\n  arg1=" + js); } catch (Throwable ignore) {}
+                        }
                         if ("onSuccess".equals(n)) {
                             if (sink != null) sink.onResult(true, js, null);
                         } else {

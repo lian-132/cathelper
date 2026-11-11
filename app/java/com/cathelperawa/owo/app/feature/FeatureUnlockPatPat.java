@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
 import android.content.Context;
 import com.cathelperawa.owo.app.MsgStore;
 import com.cathelperawa.owo.app.core.HookApi;
@@ -10,7 +11,8 @@ import com.cathelperawa.owo.app.core.HookLog;
 import de.robv.android.xposed.XC_MethodHook;
 import java.lang.reflect.Method;
 
-@HookItem(description = "解除拍一拍 10 秒冷却，可以一直拍", name = "去除拍一拍限制", order = 61, path = "去除限制/拍一拍")
+@HookItem(description = "解除拍一拍 10 秒冷却，可以一直拍", name = "去除拍一拍限制", order = 61, path = "去除限制/拍一拍",
+        priority = LoadPriority.DEFERRED)
 
 public class FeatureUnlockPatPat extends HookItemBase {
     private static final String CLS_HANDLER = "com.tencent.mobileqq.paiyipai.PaiYiPaiHandler";
@@ -24,7 +26,7 @@ public class FeatureUnlockPatPat extends HookItemBase {
         return HookConfig.getBoolean(context, K, false);
     }
 
-    @Override
+    @Override 
     public void entry(ClassLoader classLoader) {
 
         noInstrument();
@@ -40,9 +42,22 @@ public class FeatureUnlockPatPat extends HookItemBase {
             MsgStore.add("[拍一拍] 未找到限次检查方法");
         } else {
             String name = findMethodByParams.getName();
-            hookAfter(findMethodByParams, new HookApi.Action() {
-                @Override
+            hookAfter(findMethodByParams, new HookApi.Action() { 
+                @Override 
                 public void call(XC_MethodHook.MethodHookParam methodHookParam) {
+                    
+                    try {
+                        if (com.cathelperawa.owo.app.script.PatchPoint.has("host.pat")) {
+                            String target = "";
+                            if (methodHookParam.args != null && methodHookParam.args.length > 0
+                                    && methodHookParam.args[0] instanceof String) {
+                                target = (String) methodHookParam.args[0];
+                            }
+                            com.cathelperawa.owo.app.script.PatchPoint.emitAsync(
+                                    "host.pat", target, target);
+                        }
+                    } catch (Throwable ignore) {
+                    }
                     try {
                         if (FeatureUnlockPatPat.this.on()) {
                             Object result = methodHookParam.getResult();
@@ -65,7 +80,7 @@ public class FeatureUnlockPatPat extends HookItemBase {
     protected void check(com.cathelperawa.owo.app.core.SelfCheckResult.Checker c) {
         Class<?> h = c.cls("PaiYiPaiHandler", CLS_HANDLER);
         if (h != null) {
-
+            
             boolean found = false;
             for (java.lang.reflect.Method m : h.getDeclaredMethods()) {
                 if (m.getReturnType() == Boolean.TYPE
@@ -80,7 +95,7 @@ public class FeatureUnlockPatPat extends HookItemBase {
         }
     }
 
-    @Override
+    @Override 
     public String switchKey() {
         return K;
     }

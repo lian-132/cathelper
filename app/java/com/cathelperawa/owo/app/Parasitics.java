@@ -30,7 +30,9 @@ public class Parasitics {
     private static final String EXTRA_PROXY = "ACTIVITY_PROXY_INTENT";
 
     private static final List<String> INJECT = Arrays.asList(
-            "com.cathelperawa.owo.app.ConsoleActivity");
+            "com.cathelperawa.owo.app.ConsoleActivity",
+            
+            "com.cathelperawa.owo.app.ai.AiActivity");
 
     private static ClassLoader moduleLoader = Parasitics.class.getClassLoader();
 
@@ -77,7 +79,7 @@ public class Parasitics {
                     Class<?> singletonClass = Class.forName("android.util.Singleton");
                     Field fInstance = singletonClass.getDeclaredField("mInstance");
                     fInstance.setAccessible(true);
-
+                    
                     try {
                         singletonClass.getMethod("get").invoke(singleton);
                     } catch (Throwable ignore) {
@@ -230,7 +232,7 @@ public class Parasitics {
                         Parcelable real = clone.getParcelableExtra(EXTRA_PROXY);
                         if (real instanceof Intent) {
                             fIntent.set(item, real);
-
+                            
                             if (Build.VERSION.SDK_INT >= 31) {
                                 try {
                                     IBinder token = (IBinder) tx.getClass()
@@ -293,13 +295,13 @@ public class Parasitics {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             try {
-
+                
                 if ("resolveContentProvider".equals(method.getName())
                         && args != null && args.length >= 1
                         && "com.cathelperawa.owo.app.logs".equals(args[0])) {
                     Object info = method.invoke(origin, args);
                     if (info == null) {
-
+                        
                         try {
                             Class<?> piCls = Class.forName(
                                     "android.content.pm.ProviderInfo");
@@ -311,6 +313,10 @@ public class Parasitics {
                             java.lang.reflect.Field fAuth = piCls.getField("authority");
                             fAuth.set(fake, "com.cathelperawa.owo.app.logs");
                             java.lang.reflect.Field fExp = piCls.getField("exported");
+
+                            
+
+                            
 
                             fExp.set(fake, true);
                             ModLog.log("已伪造 ProviderInfo 供 TIM 发现");

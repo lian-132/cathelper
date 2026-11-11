@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.bridge;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Handler;
@@ -20,23 +21,33 @@ public final class QQUtils {
 
     private static volatile Object sRelation;
 
+    private static final String[] IMPL_CANDIDATES = {
+            "com.tencent.relation.common.api.impl.RelationNTUinAndUidApiImpl",
+            "com.tencent.qqnt.msg.api.impl.RelationNTUinAndUidApiImpl",
+    };
+
     private static Object relationImpl() {
         if (sRelation != null) return sRelation;
         ClassLoader cl = QQEnv.classLoader();
-
+        
         try {
             Class<?> iface = Class.forName(
                     "com.tencent.relation.common.api.IRelationNTUinAndUidApi", false, cl);
-            Class<?> qroute = Class.forName("com.tencent.mobileqq.qroute.QRoute", false, cl);
+            Class<?> qroute = ClassResolver.find(cl, "qroute.di", "com.tencent.mobileqq.qroute.QRoute");
             Method api = qroute.getMethod("api", Class.class);
             api.setAccessible(true);
             Object impl = api.invoke(null, iface);
             if (impl != null) { sRelation = impl; return impl; }
         } catch (Throwable ignore) {}
 
+        
+        
         try {
-            Class<?> c = XposedHelpers.findClassIfExists(
-                    "com.tencent.qqnt.msg.api.impl.RelationNTUinAndUidApiImpl", cl);
+            Class<?> c = null;
+            for (String impl : IMPL_CANDIDATES) {
+                c = XposedHelpers.findClassIfExists(impl, cl);
+                if (c != null) break;
+            }
             if (c != null) { sRelation = XposedHelpers.newInstance(c); return sRelation; }
         } catch (Throwable t) { HookLog.e("RelationApi 实例化失败", t); }
         return null;
@@ -63,6 +74,7 @@ public final class QQUtils {
 
     public static String uinFromUid(String uid) { return call1("getUinFromUid", uid); }
 
+    
     public static boolean isFriend(String uin) {
         try {
             Object rt = QQEnv.appRuntime();
@@ -86,8 +98,9 @@ public final class QQUtils {
         }
     }
 
+    
     public static void toast(final String msg) {
-
+        
         com.cathelperawa.owo.app.bridge.CatToast.show(msg);
     }
 

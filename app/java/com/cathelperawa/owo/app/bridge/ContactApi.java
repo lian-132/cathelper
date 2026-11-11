@@ -1,8 +1,14 @@
 package com.cathelperawa.owo.app.bridge;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import com.cathelperawa.owo.app.core.HookLog;
+import com.cathelperawa.owo.app.util.Refl;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class ContactApi {
 
@@ -10,24 +16,120 @@ public final class ContactApi {
 
     private static volatile Object sImpl;
 
+    
+
+    
+    private static java.util.Map<String, String> fromKernel() {
+        java.util.Map<String, String> out = new LinkedHashMap<String, String>();
+        Object bs = QQEnv.buddyService();
+        if (bs == null) return out;
+
+        Object reqType = firstEnum("com.tencent.qqnt.kernel.nativeinterface.BuddyListReqType");
+        Object listObj = callIt(bs, "getBuddyListFromCache", "", reqType);
+        if (!(listObj instanceof List)) {
+            listObj = callIt(bs, "getBuddyListFromCache", null, reqType);
+        }
+        if (!(listObj instanceof List)) {
+            listObj = callIt(bs, "getBuddyListFromCache", "");
+        }
+        if (!(listObj instanceof List)) return out;
+
+        List<?> list = (List<?>) listObj;
+        if (list.isEmpty()) return out;
+
+        Object first = list.get(0);
+
+        
+        if (!(first instanceof String)) {
+            ArrayList<Object> expanded = new ArrayList<Object>();
+            for (int i = 0; i < list.size(); i++) {
+                Object cat = list.get(i);
+                if (cat == null) continue;
+                Object uids = callIt(cat, "getBuddyUids");
+                if (uids instanceof List) {
+                    expanded.addAll((List<?>) uids);
+                }
+            }
+            if (!expanded.isEmpty()) {
+                list = expanded;
+                first = list.get(0);
+            }
+        }
+
+        if (first instanceof String) {
+            
+            ArrayList<Object> uids = new ArrayList<Object>(list);
+            Map nick = asMap(callIt(bs, "getBuddyNick", uids));
+            Map remark = asMap(callIt(bs, "getBuddyRemark", uids));
+            for (int i = 0; i < list.size(); i++) {
+                String u = String.valueOf(list.get(i));
+                String name = pick(remark, u);
+                if (name == null || name.isEmpty()) name = pick(nick, u);
+                out.put(u, name == null ? "" : name);
+            }
+        } else {
+            
+            for (int i = 0; i < list.size(); i++) {
+                Object o = list.get(i);
+                if (o == null) continue;
+                String uid = Refl.firstStrOr(o, null,
+                        "uid", "uin", "buddyUid", "buddyUin", "friendUin");
+                String name = Refl.firstStrOr(o, "",
+                        "remark", "nick", "name", "buddyNick", "remarkName");
+                if (uid != null && uid.length() > 0) out.put(uid, name);
+            }
+        }
+        return out;
+    }
+
+    private static Object callIt(Object target, String method, Object... args) {
+        try {
+            return Refl.call(target, method, args);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static Object firstEnum(String className) {
+        try {
+            Class<?> c = ClassResolver.find(QQEnv.classLoader(), className,
+                    className);
+            if (c == null || !c.isEnum()) return null;
+            Object[] vals = c.getEnumConstants();
+            return (vals == null || vals.length == 0) ? null : vals[0];
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static Map asMap(Object o) {
+        return (o instanceof Map) ? (Map) o : null;
+    }
+
+    private static String pick(Map m, String key) {
+        if (m == null || key == null) return null;
+        Object v = m.get(key);
+        return v == null ? null : String.valueOf(v);
+    }
+
     private static Object impl() {
         if (sImpl != null) return sImpl;
         ClassLoader cl = QQEnv.classLoader();
-
+        
         try {
-            Class<?> iface = Class.forName(
-                    "com.tencent.mobileqq.utils.api.IContactUtils", false, cl);
-            Class<?> qroute = Class.forName(
-                    "com.tencent.mobileqq.qroute.QRoute", false, cl);
+            Class<?> iface = ClassResolver.find(cl, "contact.utilsApi",
+                    "com.tencent.mobileqq.utils.api.IContactUtils");
+            Class<?> qroute = ClassResolver.find(cl, "qroute.di",
+                    "com.tencent.mobileqq.qroute.QRoute");
             Method api = qroute.getMethod("api", Class.class);
             api.setAccessible(true);
             Object o = api.invoke(null, iface);
             if (o != null) { sImpl = o; return o; }
         } catch (Throwable ignore) {}
-
+        
         try {
-            Class<?> c = Class.forName(
-                    "com.tencent.mobileqq.utils.api.impl.ContactUtilsImpl", false, cl);
+            Class<?> c = ClassResolver.find(cl, "contact.utilsImpl",
+                    "com.tencent.mobileqq.utils.api.impl.ContactUtilsImpl");
             sImpl = c.newInstance();
             return sImpl;
         } catch (Throwable t) {
@@ -71,17 +173,29 @@ public final class ContactApi {
         return null;
     }
 
+    
+
+    
     private static java.util.Map<String, String> BUDDIES_CACHE = null;
 
     public static synchronized java.util.Map<String, String> allBuddies() {
         if (BUDDIES_CACHE != null) {
             return new java.util.LinkedHashMap<String, String>(BUDDIES_CACHE);
         }
+
+        
+        java.util.Map<String, String> kernel = fromKernel();
+        if (!kernel.isEmpty()) {
+            BUDDIES_CACHE = kernel;
+            HookLog.i("allBuddies(kernel): " + kernel.size() + " 个好友");
+            return new java.util.LinkedHashMap<String, String>(kernel);
+        }
+
         java.util.Map<String, String> out = new java.util.LinkedHashMap<String, String>();
         ClassLoader cl = QQEnv.classLoader();
         try {
-            Class<?> implCls = Class.forName(
-                    "com.tencent.mobileqq.friend.api.impl.FriendDataServiceImpl", false, cl);
+            Class<?> implCls = ClassResolver.find(cl, "friend.dataServiceImpl",
+                    "com.tencent.mobileqq.friend.api.impl.FriendDataServiceImpl");
             Object app = QQEnv.appRuntime();
             if (app == null) return out;
 

@@ -13,6 +13,9 @@ public final class ReflectApi {
 
     private ReflectApi() {}
 
+    
+
+    
     public static Class<?> findClass(String className) {
         return HookApi.findClass(QQEnv.classLoader(), className);
     }
@@ -78,37 +81,46 @@ public final class ReflectApi {
         return HookApi.findMethodsByParams(cls, paramCount);
     }
 
+    
+
+    
     public static Object field(Object o, String name) {
         return Refl.field(o, name);
     }
+    
     public static boolean setField(Object o, String name, Object value) {
         return Refl.setField(o, name, value);
     }
+    
     public static Field findField(Class<?> cls, String name) {
         return Refl.findField(cls, name);
     }
-
+    
     public static Field findFieldByType(Object o, Class<?> type) {
         return Refl.findFieldByType(o, type);
     }
-
+    
     public static Field findFieldByType(Class<?> cls, Class<?> type, Class<?> inParent) {
         return Refl.findFieldByType(cls, type, inParent);
     }
-
+    
     public static Object fieldByType(Object o, Class<?> type) {
         return Refl.fieldByType(o, type);
     }
-
+    
     public static boolean setFieldByType(Object o, Class<?> type, Object value) {
         return Refl.setFieldByType(o, type, value);
     }
+    
     public static Object call(Object o, String method, Object... args) {
         return Refl.call(o, method, args);
     }
+    
     public static String str(Object o) {
         return Refl.str(o);
     }
+
+    
 
     public static String hexEncode(byte[] b) { return Hex.encode(b); }
     public static byte[] hexDecode(String s) { return Hex.decode(s); }

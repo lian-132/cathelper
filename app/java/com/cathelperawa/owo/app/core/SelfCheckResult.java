@@ -9,11 +9,11 @@ import java.util.List;
 public final class SelfCheckResult {
 
     public static final class Item {
-
+        
         public final String name;
-
+        
         public final boolean ok;
-
+        
         public final String detail;
 
         public Item(String name, boolean ok, String detail) {
@@ -62,6 +62,7 @@ public final class SelfCheckResult {
         return "";
     }
 
+    
     void pass(String name, String detail) {
         items.add(new Item(name, true, detail));
     }
@@ -79,7 +80,7 @@ public final class SelfCheckResult {
 
         private final SelfCheckResult r;
         private final ClassLoader cl;
-
+        
         private boolean failed = false;
 
         Checker(SelfCheckResult r) {
@@ -99,6 +100,7 @@ public final class SelfCheckResult {
             return failed;
         }
 
+        
         public Class<?> cls(String label, String... candidates) {
             if (failed) {
                 r.fail(label, "跳过：前置检查未通过");
@@ -119,6 +121,7 @@ public final class SelfCheckResult {
             return null;
         }
 
+        
         public boolean method(String label, Class<?> owner, String name) {
             if (failed || owner == null) {
                 r.fail(label, "跳过：前置检查未通过");
@@ -138,6 +141,7 @@ public final class SelfCheckResult {
             return method(label, owner, name);
         }
 
+        
         public boolean field(String label, Class<?> owner, String name) {
             if (failed || owner == null) {
                 r.fail(label, "跳过：前置检查未通过");
@@ -153,6 +157,7 @@ public final class SelfCheckResult {
             return false;
         }
 
+        
         public boolean assertThat(String label, boolean cond) {
             return assertThat(label, cond, "");
         }

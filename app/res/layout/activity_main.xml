@@ -31,6 +31,7 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
+        <!-- 主页：核心服务 + 风险 + 更新 + 预览 + 设备信息 -->
         <ScrollView
             android:id="@+id/page_home"
             android:layout_width="match_parent"
@@ -93,6 +94,7 @@
                             android:background="@drawable/bg_badge_green" />
                     </LinearLayout>
 
+                    <!-- LSPosed 状态：在总开关上方 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -168,6 +170,16 @@
                         android:textColor="#E7F0FF"
                         android:background="@drawable/bg_nav_selected" />
 
+                    <Button
+                        android:id="@+id/btn_music_hub"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="8dp"
+                        android:text="聚合中心 ＞"
+                        android:textAllCaps="false"
+                        android:textColor="#E7F0FF"
+                        android:background="@drawable/bg_nav_selected" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -229,6 +241,7 @@
             </LinearLayout>
         </ScrollView>
 
+        <!-- 模块页 -->
         <ScrollView
             android:id="@+id/page_module"
             android:layout_width="match_parent"
@@ -270,6 +283,7 @@
             </LinearLayout>
         </ScrollView>
 
+        <!-- 规则页 -->
         <ScrollView
             android:id="@+id/page_rules"
             android:layout_width="match_parent"
@@ -298,6 +312,7 @@
             </LinearLayout>
         </ScrollView>
 
+        <!-- 日志页 -->
         <ScrollView
             android:id="@+id/page_logs"
             android:layout_width="match_parent"
@@ -318,6 +333,7 @@
             </LinearLayout>
         </ScrollView>
 
+        <!-- 设置页 -->
         <ScrollView
             android:id="@+id/page_settings"
             android:layout_width="match_parent"
@@ -344,8 +360,47 @@
                     <Button android:id="@+id/btn_request_overlay" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" android:text="申请悬浮窗权限" android:textAllCaps="false"/>
                     <Button android:id="@+id/btn_export_cfg" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" android:text="复制当前配置" android:textAllCaps="false"/>
                     <Button android:id="@+id/btn_open_terminal" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" android:text="内置终端" android:textAllCaps="false"/>
+                    <Button android:id="@+id/btn_cookie_login" android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" android:text="网页登录 Cookie ＞" android:textAllCaps="false" android:background="@drawable/bg_nav_selected" android:textColor="#E7F0FF"/>
                 </LinearLayout>
             </LinearLayout>
+        </ScrollView>
+
+        <!-- ★ 2026-10-23 网页登录二级页（平台列表）。不进底部 Tab，从设置页进入，
+             背景沿用 root_main，所以和主页风格完全一致 -->
+        <ScrollView
+            android:id="@+id/page_music"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/music_hub_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="96dp"
+                android:clipToPadding="false" />
+        </ScrollView>
+
+        <ScrollView
+            android:id="@+id/page_cookie"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/cookie_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="96dp"
+                android:clipToPadding="false" />
         </ScrollView>
 
     </FrameLayout>

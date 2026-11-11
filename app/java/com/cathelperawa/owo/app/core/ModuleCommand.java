@@ -11,12 +11,20 @@ public final class ModuleCommand {
 
     public static final String ACTION = "com.cathelperawa.owo.app.CMD";
 
-    public static final String CMD_RELOAD_CONFIG = "reload_config";
-    public static final String CMD_FLUSH_STATUS = "flush_status";
-    public static final String CMD_CLEAR_ERRORS = "clear_errors";
-    public static final String CMD_EXPORT_REPORT = "export_report";
-    public static final String CMD_SNAPSHOT_CONFIG = "snapshot_config";
-    public static final String CMD_IMPORT_CONFIG = "import_config";
+    public static final String CMD_RELOAD_CONFIG = "reload_config";  
+    public static final String CMD_FLUSH_STATUS = "flush_status";     
+    public static final String CMD_CLEAR_ERRORS = "clear_errors";     
+    public static final String CMD_EXPORT_REPORT = "export_report";   
+    public static final String CMD_SNAPSHOT_CONFIG = "snapshot_config"; 
+    public static final String CMD_IMPORT_CONFIG = "import_config";     
+    public static final String CMD_DEX_PROBE = "dex_probe";           
+    public static final String CMD_CHECK_DIALOG = "check_dialog";     
+    public static final String CMD_SAFE_MODE_ON = "safe_mode_on";     
+    public static final String CMD_SAFE_MODE_OFF = "safe_mode_off";   
+    
+    public static final String CMD_SCRIPT_SMOKE = "script_smoke";
+    
+    public static final String CMD_SCRIPT_ENABLE = "script_enable";
 
     private static final String EXTRA_CMD = "cmd";
 
@@ -26,6 +34,9 @@ public final class ModuleCommand {
     private static volatile long lastCmdAt = 0;
     private static volatile String lastCmd = "";
 
+    
+
+    
     public static synchronized void register(final Context ctx) {
         if (ctx == null) return;
         lastCtx = ctx;
@@ -42,7 +53,7 @@ public final class ModuleCommand {
                 }
             };
             IntentFilter filter = new IntentFilter(ACTION);
-
+            
             if (Build.VERSION.SDK_INT >= 33) {
                 ctx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
             } else {
@@ -54,6 +65,8 @@ public final class ModuleCommand {
             HookLog.e("ModuleCommand 注册失败", t);
         }
     }
+
+    
 
     private static void dispatch(Intent intent) {
         if (intent == null) return;
@@ -79,6 +92,7 @@ public final class ModuleCommand {
             return;
         }
         if (CMD_SNAPSHOT_CONFIG.equals(cmd)) {
+            if (Ipc.currentProcMask() != Ipc.PROC_MAIN) return;   
             Context c = HookItemFactory.context();
             if (c == null) c = lastCtx;
             if (c == null) { HookLog.w("收到命令：配置快照，但没有 Context"); return; }
@@ -87,6 +101,7 @@ public final class ModuleCommand {
             return;
         }
         if (CMD_IMPORT_CONFIG.equals(cmd)) {
+            if (Ipc.currentProcMask() != Ipc.PROC_MAIN) return;   
             Context c = HookItemFactory.context();
             if (c == null) c = lastCtx;
             if (c == null) { HookLog.w("收到命令：导入配置，但没有 Context"); return; }
@@ -94,13 +109,76 @@ public final class ModuleCommand {
             HookLog.i("收到命令：导入配置 " + (r.ok ? "成功 " + r.applied + " 项" : "失败 " + r.message));
             return;
         }
+        if (CMD_SAFE_MODE_ON.equals(cmd)) {
+            Context c = HookItemFactory.context();
+            if (c == null) c = lastCtx;
+            if (c == null) { HookLog.w("收到命令：开安全模式，但没有 Context"); return; }
+            boolean ok = SafeMode.enableForNextBoot(c);
+            HookLog.i("收到命令：安全模式 " + (ok ? "已开启（下次启动生效）" : "开启失败"));
+            return;
+        }
+        if (CMD_SAFE_MODE_OFF.equals(cmd)) {
+            Context c = HookItemFactory.context();
+            if (c == null) c = lastCtx;
+            if (c == null) { HookLog.w("收到命令：关安全模式，但没有 Context"); return; }
+            boolean ok = SafeMode.disable(c);
+            HookLog.i("收到命令：安全模式 " + (ok ? "已解除" : "解除失败"));
+            return;
+        }
+        if (CMD_CHECK_DIALOG.equals(cmd)) {
+            Context c = HookItemFactory.context();
+            if (c == null) c = lastCtx;
+            if (c == null) { HookLog.w("收到命令：体检弹窗，但没有 Context"); return; }
+            InProcCheck.show(c);
+            HookLog.i("收到命令：体检弹窗 已启动");
+            return;
+        }
+        if (CMD_DEX_PROBE.equals(cmd)) {
+            Context c = HookItemFactory.context();
+            if (c == null) c = lastCtx;
+            if (c == null) { HookLog.w("收到命令：dex 探针，但没有 Context"); return; }
+            
+            com.cathelperawa.owo.app.core.dex.DexProbe.runAsync(c);
+            HookLog.i("收到命令：dex 探针 已启动");
+            return;
+        }
+        if (CMD_SCRIPT_ENABLE.equals(cmd)) {
+            String who = intent.getStringExtra("name");
+            if (who == null || who.length() == 0) {
+                HookLog.w("收到命令：启用脚本，但没给 --es name");
+                return;
+            }
+            try {
+                com.cathelperawa.owo.app.script.ScriptHost.Result r =
+                        com.cathelperawa.owo.app.script.ScriptHost.enable(who);
+                HookLog.i("收到命令：启用脚本[" + who + "] "
+                        + (r.ok ? "成功 " + r.costMs + "ms" : "失败：" + r.message));
+            } catch (Throwable t) {
+                HookLog.e("收到命令：启用脚本[" + who + "] 异常", t);
+            }
+            return;
+        }
+        if (CMD_SCRIPT_SMOKE.equals(cmd)) {
+
+            
+            try {
+                com.cathelperawa.owo.app.script.ScriptSelfCheck.run();
+                HookLog.i("收到命令：脚本环境自检 已完成（看 logcat 或脚本目录/selfcheck.txt）");
+            } catch (Throwable t) {
+                HookLog.e("收到命令：脚本环境自检失败", t);
+            }
+            return;
+        }
         if (CMD_EXPORT_REPORT.equals(cmd)) {
 
+            
+
+            if (Ipc.currentProcMask() != Ipc.PROC_MAIN) return;
             Context c = HookItemFactory.context();
             if (c == null) c = lastCtx;
             if (c == null) { HookLog.w("收到命令：打包诊断包，但没有 Context"); return; }
             final Context fc = c;
-
+            
             Thread t = new Thread(new Runnable() {
                 @Override public void run() {
                     BugReportExporter.Result r = BugReportExporter.export(fc);
@@ -111,10 +189,13 @@ public final class ModuleCommand {
             t.start();
             return;
         }
-
+        
         HookLog.w("ModuleCommand 忽略未知命令: " + cmd);
     }
 
+    
+
+    
     public static boolean send(Context ctx, String cmd) {
         if (ctx == null || cmd == null) return false;
         if (!isKnown(cmd)) {
@@ -124,7 +205,7 @@ public final class ModuleCommand {
         try {
             Intent i = new Intent(ACTION);
             i.putExtra(EXTRA_CMD, cmd);
-
+            
             i.setPackage(hostPackage());
             ctx.sendBroadcast(i);
             return true;
@@ -140,7 +221,11 @@ public final class ModuleCommand {
                 || CMD_CLEAR_ERRORS.equals(cmd)
                 || CMD_EXPORT_REPORT.equals(cmd)
                 || CMD_SNAPSHOT_CONFIG.equals(cmd)
-                || CMD_IMPORT_CONFIG.equals(cmd);
+                || CMD_IMPORT_CONFIG.equals(cmd)
+                || CMD_DEX_PROBE.equals(cmd)
+                || CMD_CHECK_DIALOG.equals(cmd)
+                || CMD_SAFE_MODE_ON.equals(cmd)
+                || CMD_SAFE_MODE_OFF.equals(cmd);
     }
 
     private static String hostPackage() {
@@ -149,9 +234,11 @@ public final class ModuleCommand {
             if (c != null) return c.getPackageName();
         } catch (Throwable ignore) {
         }
-
+        
         return "com.tencent.tim";
     }
+
+    
 
     public static boolean isRegistered() {
         return registered;

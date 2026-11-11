@@ -14,14 +14,51 @@ public final class MsgPage extends Page {
 
     private static boolean showLog = false;
 
+    private static final java.util.concurrent.atomic.AtomicInteger BUILD_SEQ =
+            new java.util.concurrent.atomic.AtomicInteger(0);
+
     @Override
     public View build() {
         View[] out = new View[4];
 
-        List<String> items = showLog ? MsgStore.logs(200) : MsgStore.all();
+        final int seq = BUILD_SEQ.incrementAndGet();
+
+        
+
+        List<String> items = null;
+        boolean loading = false;
+        if (showLog) {
+            items = MsgStore.logsIfReady(200);
+            if (items == null) {
+                items = new java.util.ArrayList<String>();
+                loading = true;
+            }
+        } else {
+            items = MsgStore.all();
+        }
+
+        if (loading) {
+            MsgStore.preloadLogs(200, new Runnable() {
+                @Override public void run() {
+                    android.os.Handler ui = new android.os.Handler(
+                            android.os.Looper.getMainLooper());
+                    ui.post(new Runnable() {
+                        @Override public void run() {
+                            
+                            if (BUILD_SEQ.get() != seq) return;
+                            try {
+                                host.setPageView(build());
+                            } catch (Throwable ignore) {
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
         String title = showLog ? "模块日志" : "消息记录";
         String sub = showLog
-                ? ("最近 " + items.size() + " 行 · files/owo/<号>/log.txt")
+                ? (loading ? "正在读取…" : ("最近 " + items.size() + " 行 · files/owo/<号>/log.txt"))
                 : ("已抓 " + items.size() + " 条 · 模块进程内");
 
         LinearLayout root = pageRootEx(title, sub, out);
@@ -62,11 +99,11 @@ public final class MsgPage extends Page {
                 empty.addView(text("模块运行后会写入这里", 11, 0xFF8496AE, false, 0));
             } else {
                 empty.addView(text("还没有抓到消息", 15, 0xFF43587A, true, dp(3)));
-                empty.addView(text("在 TIM 里收发几条消息就会出现在这里", 11, 0xFF8496AE, false, 0));
+                empty.addView(text("在 " + com.cathelperawa.owo.app.core.Host.name() + " 里收发几条消息就会出现在这里", 11, 0xFF8496AE, false, 0));
             }
             root.addView(empty);
         } else {
-
+            
             for (int i = items.size() - 1; i >= 0; i--) {
                 LinearLayout card = whiteCard(dp(16), 0x8CFFFFFF);
                 card.setPadding(dp(14), dp(11), dp(14), dp(11));

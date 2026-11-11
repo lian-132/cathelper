@@ -21,7 +21,7 @@ public final class MethodPicker {
     private boolean staticOnly = false;
     private boolean publicOnly = false;
     private boolean constructors = false;
-
+    
     private SearchScope scope = SearchScope.DECLARED;
 
     private MethodPicker(Class<?> cls) {
@@ -74,11 +74,14 @@ public final class MethodPicker {
         return this;
     }
 
+    
+
+    
     public Method pick() {
         List<Scored> list = scoreAll();
         if (list.isEmpty()) return null;
         Scored best = list.get(0);
-        if (list.size() > 1 && best.compareTo(list.get(1)) == 0) return null;
+        if (list.size() > 1 && best.compareTo(list.get(1)) == 0) return null;  
         return (Method) best.exec;
     }
 
@@ -106,6 +109,8 @@ public final class MethodPicker {
         List<Scored> list = scoreAll();
         return list.size() > 1 && list.get(0).compareTo(list.get(1)) == 0;
     }
+
+    
 
     private List<Scored> scoreAll() {
         List<Scored> out = new ArrayList<Scored>();
@@ -188,11 +193,11 @@ public final class MethodPicker {
             if (params != null) {
                 if (i < params.length) want = params[i];
             }
-            if (want == null) continue;
+            if (want == null) continue;   
 
             int cost;
             if (isVar && i == ps.length - 1) {
-
+                
                 Class<?> elem = ps[i].getComponentType();
                 cost = elem == null ? IMPOSSIBLE : costOf(want, elem) + 2;
                 varArgs = 1;
@@ -211,7 +216,7 @@ public final class MethodPicker {
         if (nameLike != null && !constructors) {
             String n = e.getName();
             if (n.equals(nameLike)) total -= 1;
-            else if (n.contains(nameLike)) total -= 0;
+            else if (n.contains(nameLike)) total -= 0;   
         }
 
         return new Scored(e, total, max, varArgs, dist, synth, bridge);
@@ -264,10 +269,12 @@ public final class MethodPicker {
         return 9;
     }
 
+    
+
     private static final class Scored implements Comparable<Scored> {
         final Executable exec;
         final int total, max, varArgs, synth, bridge;
-
+        
         int dist;
 
         Scored(Executable exec, int total, int max, int varArgs,
@@ -284,7 +291,7 @@ public final class MethodPicker {
         @Override
         public int compareTo(Scored o) {
             if (total != o.total) return total < o.total ? -1 : 1;
-            if (max != o.max) return max < o.max ? -1 : 1;
+            if (max != o.max) return max < o.max ? -1 : 1;          
             if (varArgs != o.varArgs) return varArgs < o.varArgs ? -1 : 1;
             if (dist != o.dist) return dist < o.dist ? -1 : 1;
             if (synth != o.synth) return synth < o.synth ? -1 : 1;
@@ -293,6 +300,9 @@ public final class MethodPicker {
         }
     }
 
+    
+
+    
     public String explain() {
         StringBuilder sb = new StringBuilder();
         sb.append(cls == null ? "null" : cls.getName())

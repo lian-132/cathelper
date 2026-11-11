@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import android.content.Context;
 import android.widget.EditText;
 
@@ -36,6 +37,8 @@ public final class ChatMixKernelProbe {
 
     private static volatile String lastScene = "";
 
+    
+
     public static int install(ClassLoader cl) {
         try {
             Class<?> cp = HookApi.findClass(cl, CLS_CPPPROXY);
@@ -52,6 +55,8 @@ public final class ChatMixKernelProbe {
                     @Override public void call(XC_MethodHook.MethodHookParam p) {
                         try {
 
+                            
+                            
                             handle(p);
                         } catch (Throwable t) { log("handle 异常 " + t); }
                     }
@@ -66,6 +71,10 @@ public final class ChatMixKernelProbe {
         }
     }
 
+    
+
+    
+    
     private static final java.util.HashMap<String, Long> INSERTED =
             new java.util.HashMap<String, Long>();
 
@@ -179,18 +188,26 @@ public final class ChatMixKernelProbe {
                     + " ui=" + (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()));
         }
 
-        if (!FeatureChatMix.on()) return false;
-        if (FeatureChatMix.isReplying()) return false;
+        
 
+        
+        if (!FeatureChatMix.on()) return false;                 
+        if (FeatureChatMix.isReplying()) return false;          
+
+        
+        
         boolean quoting = FeatureChatMix.quoteBarVisible();
 
+        
+
+        
         if (hasInvisibleText(elements) && countPics(elements) >= 1) {
             stripInvisibleText(elements);
             log("  → 用户点发送（图+零宽占位），已清理并放行");
             return false;
         }
 
-        if (elements.size() != 1) return false;
+        if (elements.size() != 1) return false;                 
 
         Object e = elements.get(0);
         if (e == null) return false;
@@ -202,6 +219,8 @@ public final class ChatMixKernelProbe {
         if (!(pathObj instanceof String) || ((String) pathObj).length() == 0) return false;
         String path = (String) pathObj;
         String key = picKey(pic, path);
+
+        
 
         EditText et = FeatureChatMix.edit();
         if (!shouldInsert(et, quoting)) {
@@ -240,6 +259,7 @@ public final class ChatMixKernelProbe {
                 }
                 if (cleaned.equals(c)) continue;
 
+                
                 if (cleaned.length() == 0) {
                     cleaned = "";
                     Refl.setField(te, "content", cleaned);
@@ -261,15 +281,17 @@ public final class ChatMixKernelProbe {
             for (Object e : elements) {
                 if (e == null) continue;
                 Object t = Refl.field(e, "elementType");
-                if (t instanceof Number && ((Number) t).intValue() == 1) return;
+                if (t instanceof Number && ((Number) t).intValue() == 1) return;  
             }
             Object first = elements.get(0);
             if (first == null) return;
             ClassLoader cl = first.getClass().getClassLoader();
-            Class<?> cls = Class.forName("com.tencent.qqnt.kernel.nativeinterface.MsgElement", false, cl);
+            Class<?> cls = ClassResolver.find(cl, "qqnt.msgElement",
+                    "com.tencent.qqnt.kernel.nativeinterface.MsgElement");
             Object te = cls.getDeclaredConstructor().newInstance();
             Refl.setField(te, "elementType", 1);
-            Class<?> txtCls = Class.forName("com.tencent.qqnt.kernel.nativeinterface.TextElement", false, cl);
+            Class<?> txtCls = ClassResolver.find(cl, "qqnt.textElement",
+                    "com.tencent.qqnt.kernel.nativeinterface.TextElement");
             Object txt = txtCls.getDeclaredConstructor().newInstance();
             Refl.setField(txt, "content", "");
             Refl.setField(te, "textElement", txt);
@@ -310,6 +332,8 @@ public final class ChatMixKernelProbe {
             } catch (Throwable ignore) {}
         }
     }
+
+    
 
     private static void dump(List<Object> elements) {
         StringBuilder sb = new StringBuilder();
@@ -404,13 +428,17 @@ public final class ChatMixKernelProbe {
         return FeatureChatMix.edit();
     }
 
+    
+
     private static void log(String s) {
         HookLog.i(TAG + s);
         try {
             Context c = QQEnv.appContext();
             if (c == null) return;
-            File f = new File(c.getFilesDir(), "cathelper/mixkernel.txt");
-            if (f.getParentFile() != null) f.getParentFile().mkdirs();
+
+            File d = com.cathelperawa.owo.app.core.DataDir.global("diag");
+            if (d == null) return;
+            File f = new File(d, "mixkernel.txt");
             if (f.length() > 512 * 1024) { File b = new File(f.getPath() + ".1"); if (b.exists()) b.delete(); f.renameTo(b); }
             FileWriter w = new FileWriter(f, true);
             w.write(new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date())

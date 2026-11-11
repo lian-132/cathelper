@@ -148,9 +148,23 @@ public class QQAccessibilityService extends AccessibilityService {
                     String raw = textOf(input.getText());
                     if (TextUtils.isEmpty(raw)) return;
                     if (raw.length() > MAX_EDIT_LEN) return;
-                    if (raw.equals(lastSet)) return;
+                    if (raw.equals(lastSet)) return;  
 
                     String out = CatProcessor.process(raw, cfg);
+
+                    
+                    try {
+                        if (com.cathelperawa.owo.app.script.PatchPoint.has("host.typing.text")) {
+                            com.cathelperawa.owo.app.script.PatchPoint.PatchCtx pc =
+                                    new com.cathelperawa.owo.app.script.PatchPoint.PatchCtx(
+                                            "host.typing.text", out, "");
+                            com.cathelperawa.owo.app.script.PatchPoint.emit(pc);
+                            if (pc.cancelled()) return;
+                            out = pc.text();
+                        }
+                    } catch (Throwable ignore) {
+                    }
+
                     if (TextUtils.equals(out, raw)) return;
 
                     if (setText(input, out)) {
@@ -171,6 +185,7 @@ public class QQAccessibilityService extends AccessibilityService {
         }
     }
 
+    
     private void trackTextChange(AccessibilityEvent event, boolean fromTextEvent) {
         try {
             String current = readInputText();
@@ -180,11 +195,11 @@ public class QQAccessibilityService extends AccessibilityService {
 
             if (fromTextEvent) {
                 if (diff > 1) {
-                    lastChangeWasInput = false;
+                    lastChangeWasInput = false;   
                 } else if (diff == 1 || diff == 0) {
-                    lastChangeWasInput = true;
+                    lastChangeWasInput = true;    
                 }
-
+                
                 lastTextChangeTime = System.currentTimeMillis();
             }
             lastTextSnapshot = current;
@@ -208,6 +223,7 @@ public class QQAccessibilityService extends AccessibilityService {
         }
     }
 
+    
     private void doManualReplace(AppConfig cfg) {
         if (processing) return;
         processing = true;

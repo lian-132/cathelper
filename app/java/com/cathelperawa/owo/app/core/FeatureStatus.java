@@ -2,7 +2,8 @@ package com.cathelperawa.owo.app.core;
 
 public enum FeatureStatus {
 
-    UNKNOWN("未检测", 0xFFAAB6C6),
+    
+    UNKNOWN("待触发", 0xFFAAB6C6),
 
     LOADING("加载中", 0xFF7FA5E6),
 

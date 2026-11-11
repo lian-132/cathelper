@@ -4,6 +4,9 @@ public final class PbWire {
 
     private PbWire() {}
 
+    
+
+    
     public static long nestedVarint(byte[] data, int outer, int inner) {
         int i = 0;
         while (i < data.length) {
@@ -97,6 +100,9 @@ public final class PbWire {
         return 0;
     }
 
+    
+
+    
     public static byte[] rewriteNestedVarint(byte[] data, int outer, int inner, long value) {
         try {
             int i = 0;
@@ -115,7 +121,7 @@ public final class PbWire {
                     System.arraycopy(data, off, sub, 0, Math.min(len, data.length - off));
                     byte[] newSub = rewriteVarint(sub, inner, value);
                     if (newSub == null) return null;
-                    headOut.write(data, start, (int) kr[1] - start);
+                    headOut.write(data, start, (int) kr[1] - start);   
                     writeVarint(headOut, newSub.length);
                     headOut.write(newSub);
                     headOut.write(data, off + len, data.length - off - len);
@@ -151,7 +157,7 @@ public final class PbWire {
                             writeVarint(out, value);
                             hit = true;
                         }
-
+                        
                     } else {
                         out.write(data, start, (int) vr[1] - start);
                     }
@@ -173,6 +179,9 @@ public final class PbWire {
         return null;
     }
 
+    
+
+    
     public static long[] readKey(byte[] d, int i) {
         long[] v = readVarint(d, i);
         return v;

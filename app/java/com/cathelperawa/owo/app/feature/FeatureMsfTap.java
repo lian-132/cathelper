@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
+import com.cathelperawa.owo.app.core.SelfCheckResult;
 import com.cathelperawa.owo.app.MsgStore;
 import com.cathelperawa.owo.app.core.HookApi;
 import com.cathelperawa.owo.app.core.HookItem;
@@ -14,11 +16,16 @@ import java.lang.reflect.Method;
 
 import de.robv.android.xposed.XposedHelpers;
 
-@HookItem(name = "MSF响应监听", path = "开发者/MSF响应监听", description = "照抄ovo拦MSF响应", order = 30)
+@HookItem(name = "MSF响应监听", path = "开发者/MSF响应监听", description = "照抄ovo拦MSF响应", order = 30,
+        priority = LoadPriority.BACKGROUND, hosts = {"tim", "qq"})
 public class FeatureMsfTap extends HookItemBase {
 
-    public FeatureMsfTap() {}
+    @Override
+    protected void check(SelfCheckResult.Checker c) {
+        c.cls("MSF 响应处理器", "mqq.app.msghandle.MsgRespHandler");
+    }
 
+    
     public static final String[] CMDS = new String[]{
             "MessageSvc.PbGetGroupMsg",
             "MessageSvc.PbGetOneDayRoamMsg",
@@ -30,20 +37,76 @@ public class FeatureMsfTap extends HookItemBase {
         void onResp(String cmd, JSONObject content);
     }
 
-    private static volatile Listener pending;
-    private static volatile long pendingSince = 0;
+    private static final class Ticket {
+        final String cmd;
+        final Listener listener;
+        final long since;
+        Ticket(String cmd, Listener listener) {
+            this.cmd = cmd;
+            this.listener = listener;
+            this.since = System.currentTimeMillis();
+        }
+    }
 
-    private static volatile String pendingCmd;
+    private static final java.util.ArrayList<Ticket> PENDINGS = new java.util.ArrayList<Ticket>();
+    private static final Object LOCK = new Object();
 
-    public static void expect(String cmd, Listener l) {
-        pending = l;
-        pendingCmd = cmd;
-        pendingSince = System.currentTimeMillis();
+    private static final long WAIT_TTL_MS = 12000L;
+
+    public static String expect(String cmd, Listener l) {
+        if (l == null) return null;
+        Ticket t = new Ticket(cmd, l);
+        synchronized (LOCK) {
+            
+            long now = System.currentTimeMillis();
+            for (int i = PENDINGS.size() - 1; i >= 0; i--) {
+                if (now - PENDINGS.get(i).since > WAIT_TTL_MS) PENDINGS.remove(i);
+            }
+            PENDINGS.add(t);
+        }
+        return String.valueOf(System.identityHashCode(t));
     }
 
     public static void cancel() {
-        pending = null;
-        pendingCmd = null;
+        synchronized (LOCK) {
+            PENDINGS.clear();
+        }
+    }
+
+    public static void cancel(String ticketId) {
+        if (ticketId == null) return;
+        synchronized (LOCK) {
+            for (int i = PENDINGS.size() - 1; i >= 0; i--) {
+                if (ticketId.equals(String.valueOf(System.identityHashCode(PENDINGS.get(i))))) {
+                    PENDINGS.remove(i);
+                }
+            }
+        }
+    }
+
+    public static int waiting() {
+        synchronized (LOCK) {
+            return PENDINGS.size();
+        }
+    }
+
+    private static Ticket takeTicket(String cmd) {
+        synchronized (LOCK) {
+            long now = System.currentTimeMillis();
+            for (int i = 0; i < PENDINGS.size(); i++) {
+                Ticket t = PENDINGS.get(i);
+                if (now - t.since > WAIT_TTL_MS) {
+                    PENDINGS.remove(i);
+                    i--;
+                    continue;
+                }
+                if (t.cmd == null || t.cmd.equals(cmd)) {
+                    PENDINGS.remove(i);
+                    return t;
+                }
+            }
+            return null;
+        }
     }
 
     private static volatile String lastCmd;
@@ -56,10 +119,10 @@ public class FeatureMsfTap extends HookItemBase {
     @Override
     public void entry(ClassLoader cl) {
         hint("MSF 收包时");
-        noInstrument();
+        noInstrument();          
         try {
-            Class<?> h = XposedHelpers.findClassIfExists(
-                    "mqq.app.msghandle.MsgRespHandler", cl);
+            Class<?> h = com.cathelperawa.owo.app.core.dex.ClassResolver.find(
+                    cl, "msf.respHandler", "mqq.app.msghandle.MsgRespHandler");
             if (h == null) {
                 fail("未找到 MsgRespHandler");
                 return;
@@ -81,13 +144,13 @@ public class FeatureMsfTap extends HookItemBase {
         }
     }
 
-    private static void onResp(Object[] args) {
+    private void onResp(Object[] args) {
         try {
             if (args == null || args.length < 2 || args[1] == null) return;
             Object holder = args[1];
             Object fromMsg = Refl.field(holder, "fromServiceMsg");
             if (fromMsg == null) {
-
+                
                 for (Object a : args) {
                     if (a != null && a.getClass().getName().contains("FromServiceMsg")) {
                         fromMsg = a;
@@ -113,13 +176,19 @@ public class FeatureMsfTap extends HookItemBase {
             if (!isWanted(cmd)) return;
             handle(cmd, buf);
         } catch (Throwable t) {
-            HookLog.e("MsfTap.onResp 异常", t);
+            HookLog.e("onResp 异常", t);
         }
     }
 
     private static boolean isWanted(String cmd) {
         for (String c : CMDS) {
             if (c.equals(cmd)) return true;
+        }
+
+        synchronized (LOCK) {
+            for (int i = 0; i < PENDINGS.size(); i++) {
+                if (PENDINGS.get(i).cmd.equals(cmd)) return true;
+            }
         }
         return false;
     }
@@ -134,28 +203,42 @@ public class FeatureMsfTap extends HookItemBase {
         }
     }
 
-    private static void handle(String cmd, byte[] buf) {
+    private void handle(String cmd, byte[] buf) {
         try {
+            
+            if (cmd != null && cmd.contains("OlPushService.MsgPush")) {
+                try {
+                    FeatureRedPacket.notePushTime(System.currentTimeMillis());
+                } catch (Throwable ignore) {
+                }
+            }
+
+            
+            
+            Ticket t = takeTicket(cmd);
+            if (t == null) {
+                lastCmd = cmd;
+                return;
+            }
+
             FunProtoData d = new FunProtoData();
-            d.fromBytes(FunProtoData.getUnpPackage(buf));
+            d.fromBytes(FunProtoData.getUnpPackage(buf));   
             JSONObject content = d.toJSON();
             lastCmd = cmd;
             lastJson = content.toString(2);
 
-            MsgStore.add("【MSF响应】cmd=" + cmd + " len=" + buf.length);
+            MsgStore.add("【MSF响应】cmd=" + cmd + " len=" + buf.length
+                    + " 等待中=" + waiting());
 
-            Listener l = pending;
-            if (l != null && cmd.equals(pendingCmd)
-                    && System.currentTimeMillis() - pendingSince < 10000) {
-                pending = null;
-                pendingCmd = null;
-                l.onResp(cmd, content);
-            }
+            t.listener.onResp(cmd, content);
         } catch (Throwable t) {
-            HookLog.e("MsfTap.handle 失败 cmd=" + cmd, t);
+            HookLog.e("handle 失败 cmd=" + cmd, t);
         }
     }
 
+    
+
+    
     public static Object extractElements(JSONObject content) {
         if (content == null) return null;
         try {
@@ -165,7 +248,8 @@ public class FeatureMsfTap extends HookItemBase {
             if (o3 == null) return null;
             JSONObject o1 = o3.optJSONObject("1");
             if (o1 == null) return null;
-            return o1.opt("2");
+            Object arr = o1.opt("2");
+            return arr;   
         } catch (Throwable t) {
             return null;
         }

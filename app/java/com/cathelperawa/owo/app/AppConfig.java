@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class AppConfig {
-
+    
     public static volatile AppConfig current;
 
     public boolean total = true;
@@ -83,7 +83,7 @@ public class AppConfig {
 
     public static AppConfig loadHost(Context ctx) {
         AppConfig c = new AppConfig();
-
+        
         try {
             java.io.File f = new java.io.File(ctx.getFilesDir(), "console");
             if (f.exists()) {
@@ -92,7 +92,7 @@ public class AppConfig {
                 p.load(in);
                 in.close();
 
-                c.total = "1".equals(p.getProperty("cat_total", "0"));
+                c.total = "1".equals(p.getProperty("cat_total", "0"));   
                 c.baseCat = "1".equals(p.getProperty("cat_base", "1"));
                 c.spoiled = "1".equals(p.getProperty("cat_spoiled", "1"));
                 c.endMeow = "1".equals(p.getProperty("cat_endmeow", "1"));

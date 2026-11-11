@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.bridge;
 
 import com.cathelperawa.owo.app.MsgStore;
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import com.cathelperawa.owo.app.core.HookLog;
 import com.cathelperawa.owo.app.util.Refl;
 
@@ -20,8 +21,8 @@ public final class TroopApi {
         if (troopUin == null || uin == null || uin.isEmpty()) return uin;
         try {
             ClassLoader cl = QQEnv.classLoader();
-            Class<?> repoCls = Class.forName(
-                    "com.tencent.qqnt.troopmemberlist.TroopMemberListRepo", false, cl);
+            Class<?> repoCls = ClassResolver.find(cl, "troop.memberListRepo",
+                    "com.tencent.qqnt.troopmemberlist.TroopMemberListRepo");
             java.lang.reflect.Constructor<?> ctor = repoCls.getDeclaredConstructor();
             ctor.setAccessible(true);
             Object repo = ctor.newInstance();
@@ -33,8 +34,8 @@ public final class TroopApi {
             }
             if (fetch == null) return uin;
 
-            final Class<?> memberCls = Class.forName(
-                    "com.tencent.mobileqq.data.troop.TroopMemberInfo", false, cl);
+            final Class<?> memberCls = ClassResolver.find(cl, "troop.memberInfo",
+                    "com.tencent.mobileqq.data.troop.TroopMemberInfo");
             final Class<?> cbCls = fetch.getParameterTypes()[5];
             final CompletableFuture<Object> fut = new CompletableFuture<Object>();
             Object cb = Proxy.newProxyInstance(cl, new Class<?>[]{cbCls}, new InvocationHandler() {
@@ -71,19 +72,40 @@ public final class TroopApi {
         }
         try {
             ClassLoader cl = QQEnv.classLoader();
-            Class<?> impl = Class.forName(
-                    "com.tencent.qqnt.troop.impl.TroopListRepoApiImpl", false, cl);
-            java.lang.reflect.Constructor<?> ctor = impl.getDeclaredConstructor();
-            ctor.setAccessible(true);
-            Object repo = ctor.newInstance();
+            Class<?> impl = ClassResolver.find(cl, "troop.listRepoImpl",
+                    "com.tencent.qqnt.troop.impl.TroopListRepoApiImpl");
+
+            Object repo = null;
+            for (String gn : new String[]{"getInstance", "getService", "INSTANCE"}) {
+                try {
+                    Method g = impl.getMethod(gn);
+                    g.setAccessible(true);
+                    Object v = g.invoke(null);
+                    if (v != null) { repo = v; break; }
+                } catch (Throwable ignore) {
+                }
+            }
+            if (repo == null) {
+                java.lang.reflect.Constructor<?> ctor = impl.getDeclaredConstructor();
+                ctor.setAccessible(true);
+                repo = ctor.newInstance();
+            }
 
             Method getList = null;
-            for (Method m : impl.getMethods()) {
-                if ("getSortedJoinedTroopInfoFromCache".equals(m.getName())
-                        && m.getParameterTypes().length == 0) {
+            String[] wantM = {
+                    "getSortedJoinedTroopInfoFromCache",
+                    "getTroopListFromCache",
+                    "getJoinedTroopInfoFromCache",
+                    "getSortedJoinedValidTroopInfoFromCache",
+            };
+            for (String wn : wantM) {
+                for (Method m : impl.getMethods()) {
+                    if (!wn.equals(m.getName())) continue;
+                    if (m.getParameterTypes().length != 0) continue;
                     getList = m;
                     break;
                 }
+                if (getList != null) break;
             }
             if (getList == null) {
                 HookLog.w("群名：未找到 getSortedJoinedTroopInfoFromCache");
@@ -94,17 +116,16 @@ public final class TroopApi {
             if (res instanceof List) {
                 for (Object ti : (List<?>) res) {
                     if (ti == null) continue;
-                    String uin = Refl.str(Refl.field(ti, "troopuin"));
-                    String nm = Refl.str(Refl.field(ti, "troopNameFromNT"));
-                    if (nm == null || nm.trim().isEmpty()) {
-                        nm = Refl.str(Refl.field(ti, "troopName"));
-                    }
-                    if (uin != null && nm != null && nm.trim().length() > 0) {
-                        TROOP_NAMES.put(uin, nm);
-                    }
+                    
+                    String uin = firstStr(ti, "troopuin", "troopUin", "troopcode", "uin", "groupCode");
+                    String nm  = firstStr(ti, "troopname", "troopName", "troopNameFromNT", "name");
+                    if (uin == null || uin.trim().isEmpty()) continue;
+                    if (nm == null) nm = "";
+                    TROOP_NAMES.put(uin.trim(), nm.trim());
                 }
             }
-            troopNamesLoaded = true;
+
+            if (!TROOP_NAMES.isEmpty()) troopNamesLoaded = true;
             HookLog.i("群名：已缓存 " + TROOP_NAMES.size() + " 个群名");
             MsgStore.add("[群名] 已缓存 " + TROOP_NAMES.size() + " 个群名");
         } catch (Throwable t) {
@@ -133,19 +154,19 @@ public final class TroopApi {
     }
 
     public static String getTroopName(String troopUin) {
-
+        
         String cached = lookupTroopName(troopUin);
         if (notBlank(cached)) return cached;
         if (troopUin == null || troopUin.isEmpty()) return null;
         ClassLoader cl = QQEnv.classLoader();
-
+        
         try {
             Object info = troopInfoOf(cl, troopUin);
             String n = troopNameOf(info);
             if (notBlank(n)) return n;
         } catch (Throwable ignore) {
         }
-
+        
         try {
             Object rt = QQEnv.appRuntime();
             if (rt != null) {
@@ -221,18 +242,61 @@ public final class TroopApi {
         return null;
     }
 
-    private static Object serviceOf(ClassLoader cl, Class<?> iface) {
+    private static final ClassResolver.Spec DI_SPEC =
+            new ClassResolver.Spec("troop.di")
+                    .candidates("com.tencent.mobileqq.qroute.QRoute",
+                                "com.tencent.qqnt.kernel.api.QQNTServiceFactory")
+                    .nameMatches("\\bQRoute$")
+                    .validator(new ClassResolver.Validator() {
+                        @Override public boolean accept(Class<?> c) {
+                            try {
+                                java.lang.reflect.Method m = c.getMethod("api", Class.class);
+                                return java.lang.reflect.Modifier.isStatic(m.getModifiers());
+                            } catch (Throwable t) {
+                                return false;
+                            }
+                        }
+                    });
+
+    private static android.content.Context diContext() {
         try {
-            Class<?> qRoute = Class.forName("com.tencent.qqnt.kernel.api.QQNTServiceFactory", false, cl);
-            for (Method m : qRoute.getMethods()) {
-                if (m.getParameterTypes().length == 1
-                        && m.getParameterTypes()[0].isAssignableFrom(iface)) {
-                    m.setAccessible(true);
-                    Object v = m.invoke(null, iface);
-                    if (v != null) return v;
-                }
+            return QQEnv.appContext();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static final String[] DI_CANDIDATES = {
+            "com.tencent.mobileqq.qroute.QRoute",
+            "com.tencent.qqnt.kernel.api.QQNTServiceFactory",
+    };
+
+    private static Object serviceOf(ClassLoader cl, Class<?> iface) {
+        
+        try {
+            Class<?> qRoute = ClassResolver.resolve(diContext(), cl, DI_SPEC);
+            if (qRoute != null) {
+                Method api = qRoute.getMethod("api", Class.class);
+                api.setAccessible(true);
+                Object v = api.invoke(null, iface);
+                if (v != null) return v;
             }
         } catch (Throwable ignore) {
+        }
+        
+        for (int i = 1; i < DI_CANDIDATES.length; i++) {
+            try {
+                Class<?> factory = Class.forName(DI_CANDIDATES[i], false, cl);
+                for (Method m : factory.getMethods()) {
+                    if (m.getParameterTypes().length == 1
+                            && m.getParameterTypes()[0].isAssignableFrom(iface)) {
+                        m.setAccessible(true);
+                        Object v = m.invoke(null, iface);
+                        if (v != null) return v;
+                    }
+                }
+            } catch (Throwable ignore) {
+            }
         }
         try {
             Object rt = QQEnv.appRuntime();
@@ -252,5 +316,16 @@ public final class TroopApi {
 
     private static boolean notBlank(String s) {
         return s != null && s.trim().length() > 0;
+    }
+
+    private static String firstStr(Object obj, String... names) {
+        for (String n : names) {
+            try {
+                String v = Refl.str(Refl.field(obj, n));
+                if (v != null && !v.trim().isEmpty()) return v;
+            } catch (Throwable ignore) {
+            }
+        }
+        return null;
     }
 }

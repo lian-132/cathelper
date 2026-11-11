@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.bridge;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import android.app.Activity;
 import android.content.Context;
 
@@ -48,13 +49,13 @@ public final class QQEnv {
 
     public static String currentUid() {
         try {
-
+            
             String uin = currentUin();
             if (uin == null) return null;
             ClassLoader cl = classLoader();
-            Class<?> iface = Class.forName(
-                    "com.tencent.relation.common.api.IRelationNTUinAndUidApi", false, cl);
-            Class<?> qroute = Class.forName("com.tencent.mobileqq.qroute.QRoute", false, cl);
+            Class<?> iface = ClassResolver.find(cl, "relation.uinUidApi",
+                    "com.tencent.relation.common.api.IRelationNTUinAndUidApi");
+            Class<?> qroute = ClassResolver.find(cl, "qroute.di", "com.tencent.mobileqq.qroute.QRoute");
             Method api = qroute.getMethod("api", Class.class);
             api.setAccessible(true);
             Object impl = api.invoke(null, iface);
@@ -65,7 +66,7 @@ public final class QQEnv {
                 if (v != null) return String.valueOf(v);
             }
         } catch (Throwable t) {
-
+            
             com.cathelperawa.owo.app.core.HookLog.d("[QQEnv] currentUid QRoute 路径失败: " + t);
         }
         try {
@@ -111,14 +112,14 @@ public final class QQEnv {
         try {
             Object rt = appRuntime();
             if (rt == null) return null;
-            Class<?> iks = XposedHelpers.findClassIfExists(
-                    "com.tencent.qqnt.kernel.api.IKernelService", classLoader());
+            Class<?> iks = ClassResolver.find(classLoader(), "qqnt.kernelService",
+                    "com.tencent.qqnt.kernel.api.IKernelService");
             if (iks == null) return null;
             Method getSvc = rt.getClass().getMethod("getRuntimeService", Class.class, String.class);
             getSvc.setAccessible(true);
             Object kernel = getSvc.invoke(rt, iks, "");
             if (kernel == null) return null;
-            Object impl = callByName(kernel, "getMsgService");
+            Object impl = callByName(kernel, "getMsgService");   
             sMsgServiceImpl = impl;
             if (impl == null) return null;
 
@@ -130,8 +131,39 @@ public final class QQEnv {
         } catch (Throwable t) { return null; }
     }
 
-    private static volatile Object sMsgServiceImpl;
+    public static Object kernelService() {
+        try {
+            Object rt = appRuntime();
+            if (rt == null) return null;
+            Class<?> iks = ClassResolver.find(classLoader(), "qqnt.kernelService",
+                    "com.tencent.qqnt.kernel.api.IKernelService");
+            if (iks == null) return null;
+            Method m = rt.getClass().getMethod("getRuntimeService", Class.class, String.class);
+            m.setAccessible(true);
+            return m.invoke(rt, iks, "");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
 
+    public static Object buddyService() {
+        try {
+            Object kernel = kernelService();
+            if (kernel == null) return null;
+            for (Method m : kernel.getClass().getMethods()) {
+                if (!"getBuddyService".equals(m.getName())) continue;
+                if (m.getParameterTypes().length != 0) continue;
+                m.setAccessible(true);
+                Object o = m.invoke(kernel);
+                if (o != null) return o;
+            }
+        } catch (Throwable ignore) {
+        }
+        return null;
+    }
+
+    private static volatile Object sMsgServiceImpl;
+    
     public static Object msgServiceImpl() {
         if (sMsgServiceImpl == null) { try { kernelMsgService(); } catch (Throwable ignore) {} }
         return sMsgServiceImpl;

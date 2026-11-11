@@ -11,37 +11,47 @@ public final class HookConfig {
 
     private static final String FILE = "console";
     private static volatile Properties props;
-    private static long lastLoad = 0;
+    private static volatile long lastLoad = 0;
 
     private HookConfig() {}
 
     private static Properties p(Context ctx) {
-
         long now = System.currentTimeMillis();
-        if (props == null || now - lastLoad > 2000) {
+        Properties cur = props;
+        if (cur != null && now - lastLoad <= 2000) return cur;
+        synchronized (HookConfig.class) {
+            now = System.currentTimeMillis();
+            if (props != null && now - lastLoad <= 2000) return props;
             Properties np = new Properties();
             if (ctx != null) {
                 File f = new File(ctx.getFilesDir(), FILE);
                 if (f.exists()) {
-
+                    
                     try (FileInputStream in = new FileInputStream(f)) {
                         np.load(in);
                     } catch (Throwable ignore) {
                     }
                 }
             }
-            props = np;
             lastLoad = now;
+            props = np;
+            return np;
         }
-        return props;
     }
 
-    public static void reload() {
+    public static synchronized void reload() {
         props = null;
         lastLoad = 0;
     }
 
-    public static String get(Context ctx, String key, String def) {        try {
+    public static String get(Context ctx, String key, String def) {
+        
+        try {
+            String ov = ConfigOverride.get(key);
+            if (ov != null) return ov;
+        } catch (Throwable ignore) {
+        }
+        try {
             return p(ctx).getProperty(key, def);
         } catch (Throwable t) {
             return def;
@@ -49,6 +59,14 @@ public final class HookConfig {
     }
 
     public static boolean getBoolean(Context ctx, String key, boolean def) {
+        
+        try {
+            String ov = ConfigOverride.get(key);
+            if (ov != null) {
+                return "true".equalsIgnoreCase(ov) || "1".equals(ov);
+            }
+        } catch (Throwable ignore) {
+        }
         try {
             String v = p(ctx).getProperty(key);
             if (v == null) return def;
@@ -58,7 +76,7 @@ public final class HookConfig {
         }
     }
 
-    public static void set(Context ctx, String key, String value) {
+    public static synchronized void set(Context ctx, String key, String value) {
         try {
             Properties np = new Properties();
             File f = new File(ctx.getFilesDir(), FILE);
@@ -72,14 +90,16 @@ public final class HookConfig {
             try (FileOutputStream out = new FileOutputStream(f)) {
                 np.store(out, "cathelper config");
             }
-            lastLoad = 0;
+            lastLoad = 0;   
         } catch (Throwable ignore) {
         }
     }
 
-    public static boolean isEnabled(Context ctx, HookItemBase item) {
+    
 
-        return getBoolean(ctx, item.switchKey(), false);
+    public static boolean isEnabled(Context ctx, HookItemBase item) {
+        
+        return getBoolean(ctx, item.switchKey(), true);
     }
 
     public static void setEnabled(Context ctx, HookItemBase item, boolean on) {

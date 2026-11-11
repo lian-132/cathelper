@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -42,7 +43,7 @@ public class MainActivity extends Activity {
     private static final String[] UI_STYLES = new String[]{"深色（默认）", "深蓝"};
 
     private AppConfig cfg;
-
+    
     private boolean loadingUi = false;
 
     private Switch swTotal, swBase, swWave, swPaw, swCatName, swMasterName, swSpoiled,
@@ -55,13 +56,26 @@ public class MainActivity extends Activity {
             tvXposedBadge, tvXposedDetail;
     private Spinner spUiStyle;
 
-    private ScrollPage pageHome, pageModule, pageRules, pageLogs, pageSettings;
+    private ScrollPage pageHome, pageModule, pageRules, pageLogs, pageSettings, pageCookie, pageMusic;
+    
+    private boolean onCookiePage = false;
+    
+    private boolean onMusicHub = false;
     private NavItem navHome, navModule, navRules, navLogs, navSettings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        try {
+            String from = getIntent() == null ? null : getIntent().getStringExtra("from_host");
+            if (from != null && from.length() > 0) {
+                com.cathelperawa.owo.app.core.UIScope.set(from);
+            }
+        } catch (Throwable ignore) {
+        }
         setContentView(R.layout.activity_main);
+        applySystemBars();
 
         bindViews();
         cfg = AppConfig.load(this);
@@ -77,20 +91,55 @@ public class MainActivity extends Activity {
         appendLog("应用启动");
 
         switchPage(PAGE_HOME);
+
+        try {
+            com.cathelperawa.owo.app.cookie.MusicHubUi.initSession(this);
+        } catch (Throwable ignore) {
+        }
+
+        try {
+            if (getIntent() != null && getIntent().getBooleanExtra("cat_auto_play", false)) {
+                openMusicHub();
+                final MainActivity self = this;
+                getWindow().getDecorView().postDelayed(new Runnable() {
+                    @Override public void run() {
+                        com.cathelperawa.owo.app.cookie.MusicHubUi.autoPlay(self);
+                    }
+                }, 400);
+                return;
+            }
+        } catch (Throwable ignore) {
+        }
+
+        
+        try {
+            android.content.Intent it0 = getIntent();
+            boolean asMusic = it0 != null
+                    && (it0.hasCategory("android.intent.category.APP_MUSIC")
+                    || (android.content.Intent.ACTION_VIEW.equals(it0.getAction())
+                        && it0.getType() != null && it0.getType().startsWith("audio/")));
+            if (asMusic) {
+                openMusicHub();
+            }
+        } catch (Throwable ignore) {
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
+        
         xpHandler.removeCallbacks(xpTick);
         xpHandler.post(xpTick);
         updateServiceState();
-
+        
         String style = getSharedPreferences(AppConfig.PREF, MODE_PRIVATE)
                 .getString("uiStyle", UI_STYLES[0]);
         applyUiStyle(style, false);
         applyCardAlphaToUi();
+        
+        if (onCookiePage) refreshCookieList();
+        if (onMusicHub) refreshMusicHub();
     }
 
     @Override
@@ -175,6 +224,8 @@ public class MainActivity extends Activity {
         pageRules = new ScrollPage(findViewById(R.id.page_rules));
         pageLogs = new ScrollPage(findViewById(R.id.page_logs));
         pageSettings = new ScrollPage(findViewById(R.id.page_settings));
+        pageCookie = new ScrollPage(findViewById(R.id.page_cookie));
+        pageMusic = new ScrollPage(findViewById(R.id.page_music));
 
         navRules = new NavItem((LinearLayout) findViewById(R.id.nav_item_rules),
                 (ImageView) findViewById(R.id.nav_icon_rules),
@@ -241,6 +292,10 @@ public class MainActivity extends Activity {
         pageHome.show(index == PAGE_HOME);
         pageLogs.show(index == PAGE_LOGS);
         pageSettings.show(index == PAGE_SETTINGS);
+        if (pageCookie != null) pageCookie.show(false);
+        if (pageMusic != null) pageMusic.show(false);
+        onCookiePage = false;
+        onMusicHub = false;
 
         navRules.setActive(index == PAGE_RULES);
         navModule.setActive(index == PAGE_MODULE);
@@ -253,6 +308,99 @@ public class MainActivity extends Activity {
 
         if (index == PAGE_RULES) refreshRuleStats();
         if (index == PAGE_LOGS) refreshLogs();
+    }
+
+    private void openCookiePage() {
+        try {
+            pageRules.show(false);
+            pageModule.show(false);
+            pageHome.show(false);
+            pageLogs.show(false);
+            pageSettings.show(false);
+            pageCookie.show(true);
+
+            navRules.setActive(false);
+            navModule.setActive(false);
+            navHome.setActive(false);
+            navLogs.setActive(false);
+            navSettings.setActive(false);
+
+            topbarTitle.setText("网页登录");
+            onCookiePage = true;
+            refreshCookieList();
+        } catch (Throwable t) {
+            Toast.makeText(this, "打开网页登录页失败：" + t, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void refreshCookieList() {
+        try {
+            View v = findViewById(R.id.cookie_list);
+            if (v instanceof LinearLayout) {
+                com.cathelperawa.owo.app.cookie.CookieAccountsUi.build(this, (LinearLayout) v);
+            }
+        } catch (Throwable t) {
+            appendLog("网页登录列表构建失败：" + t);
+        }
+    }
+
+    private void openMusicHub() {
+        try {
+            pageRules.show(false);
+            pageModule.show(false);
+            pageHome.show(false);
+            pageLogs.show(false);
+            pageSettings.show(false);
+            pageCookie.show(false);
+            pageMusic.show(true);
+
+            navRules.setActive(false);
+            navModule.setActive(false);
+            navHome.setActive(false);
+            navLogs.setActive(false);
+            navSettings.setActive(false);
+
+            topbarTitle.setText("聚合中心");
+            onCookiePage = false;
+            onMusicHub = true;
+            refreshMusicHub();
+        } catch (Throwable t) {
+            Toast.makeText(this, "打开音乐中心失败：" + t, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void refreshMusicHub() {
+        try {
+            View v = findViewById(R.id.music_hub_list);
+            if (v instanceof LinearLayout) {
+                com.cathelperawa.owo.app.cookie.MusicHubUi.buildEntry(this, (LinearLayout) v);
+            }
+        } catch (Throwable t) {
+            appendLog("音乐中心构建失败：" + t);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (onMusicHub) {
+            
+            boolean handled = false;
+            try {
+                handled = com.cathelperawa.owo.app.cookie.MusicHubUi.handleBack(this);
+            } catch (Throwable ignore) {
+            }
+            if (handled) return;
+            onMusicHub = false;
+            
+            switchPage(PAGE_HOME);
+            return;
+        }
+        if (onCookiePage) {
+            onCookiePage = false;
+            switchPage(PAGE_SETTINGS);
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void bindActions() {
@@ -336,8 +484,7 @@ public class MainActivity extends Activity {
         if (btnTerm != null) {
             btnTerm.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    startActivity(new Intent(MainActivity.this,
-                            com.cathelperawa.owo.app.terminal.TerminalActivity.class));
+                    com.cathelperawa.owo.app.ui.TerminalPanel.show(MainActivity.this);
                 }
             });
         }
@@ -437,6 +584,18 @@ public class MainActivity extends Activity {
             }
         });
 
+        findViewById(R.id.btn_cookie_login).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                openCookiePage();
+            }
+        });
+
+        findViewById(R.id.btn_music_hub).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                openMusicHub();
+            }
+        });
+
         btnExportCfg.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 pullUiToConfig();
@@ -525,7 +684,7 @@ public class MainActivity extends Activity {
         if (sw == null) return;
         sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(android.widget.CompoundButton bv, boolean isChecked) {
-                if (loadingUi) return;
+                if (loadingUi) return;   
                 pullUiToConfig();
                 cfg.save(MainActivity.this);
                 appendLog(label + " -> " + (isChecked ? "开" : "关"));
@@ -605,7 +764,7 @@ public class MainActivity extends Activity {
                 String line;
                 while ((line = r.readLine()) != null) buf.append(line).append("\n");
                 r.close();
-
+                
                 String[] lines = buf.toString().split("\n");
                 int from = Math.max(0, lines.length - 80);
                 for (int i = from; i < lines.length; i++) sb.append(lines[i]).append("\n");
@@ -740,6 +899,47 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private void applySystemBars() {
+        final View root = findViewById(R.id.root_main);
+        final View topbar = findViewById(R.id.topbar);
+        final View navBar = findViewById(R.id.nav_bar);
+        if (root == null) return;
+
+        final int topBase = topbar == null ? 0 : topbar.getPaddingTop();
+        final int navBase = navBar == null ? 0 : navBar.getPaddingBottom();
+
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                int top = 0, bottom = 0;
+                try {
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        top = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                        bottom = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+                    } else {
+                        top = insets.getSystemWindowInsetTop();
+                        bottom = insets.getSystemWindowInsetBottom();
+                    }
+                } catch (Throwable ignore) {
+                }
+                if (topbar != null) {
+                    topbar.setPadding(topbar.getPaddingLeft(), topBase + top,
+                            topbar.getPaddingRight(), topbar.getPaddingBottom());
+                }
+                if (navBar != null && bottom > 0) {
+                    android.view.ViewGroup.LayoutParams lp = navBar.getLayoutParams();
+                    if (lp != null && lp.height >= 0 && lp.height < 68 * 3) {
+                        lp.height = lp.height + bottom;
+                        navBar.setLayoutParams(lp);
+                    }
+                    navBar.setPadding(navBar.getPaddingLeft(), navBar.getPaddingTop(),
+                            navBar.getPaddingRight(), navBase + bottom);
+                }
+                return insets;
+            }
+        });
+        root.requestApplyInsets();
+    }
+
     private void applyUiStyle(String style, boolean toast) {
         View root = findViewById(R.id.root_main);
         View topbar = findViewById(R.id.topbar);
@@ -754,7 +954,7 @@ public class MainActivity extends Activity {
                 if (alphaPct >= 100) {
                     root.setBackground(d);
                 } else {
-
+                    
                     int overlayAlpha = (int) ((100 - alphaPct) / 100.0 * 255);
                     android.graphics.drawable.Drawable[] layers = new android.graphics.drawable.Drawable[]{
                             d,

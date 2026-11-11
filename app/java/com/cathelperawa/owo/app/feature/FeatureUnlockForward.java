@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
+import com.cathelperawa.owo.app.core.SelfCheckResult;
 import android.content.Context;
 import com.cathelperawa.owo.app.MsgStore;
 import com.cathelperawa.owo.app.core.HookApi;
@@ -13,9 +15,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-@HookItem(description = "解除转发时的人数上限", name = "去除转发限制", order = 60, path = "去除限制/转发")
+@HookItem(description = "解除转发时的人数上限", name = "去除转发限制", order = 60, path = "去除限制/转发",
+        priority = LoadPriority.DEFERRED)
 
 public class FeatureUnlockForward extends HookItemBase {
+
+    @Override
+    protected void check(SelfCheckResult.Checker c) {
+        c.cls("好友转发", CLS_FRIEND);
+        c.cls("最近转发", CLS_RECENT);
+        c.cls("群聊转发", CLS_TROOP);
+    }
+
     private static final String CLS_FRIEND = "com.tencent.mobileqq.activity.ForwardFriendListActivity";
     private static final String CLS_RECENT = "com.tencent.mobileqq.activity.ForwardRecentActivity";
     private static final String CLS_TROOP = "com.tencent.mobileqq.activity.ForwardTroopListFragment";
@@ -31,8 +42,8 @@ public class FeatureUnlockForward extends HookItemBase {
         }
         int i = 0;
         for (Constructor<?> constructor : findClass.getDeclaredConstructors()) {
-            hookAfter(constructor, new HookApi.Action() {
-                @Override
+            hookAfter(constructor, new HookApi.Action() { 
+                @Override 
                 public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                     if (FeatureUnlockForward.this.on()) {
                         try {
@@ -59,8 +70,8 @@ public class FeatureUnlockForward extends HookItemBase {
         }
         int i = 0;
         for (Constructor<?> constructor : findClass.getDeclaredConstructors()) {
-            hookAfter(constructor, new HookApi.Action() {
-                @Override
+            hookAfter(constructor, new HookApi.Action() { 
+                @Override 
                 public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                     Field findFieldByType;
                     if (FeatureUnlockForward.this.on()) {
@@ -98,16 +109,16 @@ public class FeatureUnlockForward extends HookItemBase {
         return lastIndexOf < 0 ? str : str.substring(lastIndexOf + 1);
     }
 
-    @Override
+    @Override 
     public void entry(ClassLoader classLoader) {
         hint("无独立事件（只解除限制）");
-        noInstrument();
+        noInstrument();          
         int i = (hookByName(classLoader, CLS_RECENT) ? 1 : 0) + 0 + (hookByType(classLoader, CLS_FRIEND) ? 1 : 0) + (hookByType(classLoader, CLS_TROOP) ? 1 : 0);
         HookLog.i("转发限制：安装完成 " + i + "/3");
         MsgStore.add("[转发限制] 安装完成 " + i + "/3");
     }
 
-    @Override
+    @Override 
     public String switchKey() {
         return K;
     }

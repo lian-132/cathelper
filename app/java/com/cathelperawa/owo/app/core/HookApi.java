@@ -20,6 +20,8 @@ public final class HookApi {
         void call(XC_MethodHook.MethodHookParam p) throws Throwable;
     }
 
+    
+
     public static Object before(Member m, final Action a) {
         return before(m, a, null);
     }
@@ -57,16 +59,33 @@ public final class HookApi {
     }
 
     private static void reportFailure(String phase, Member m,
-                                      HookItemBase owner, Throwable t) {
+                                      HookItemBase owner, Throwable raw) {
         String site = phase + ":" + (m == null ? "?" : m.getName());
         String feature = owner == null ? null : owner.featureName();
+
+        
+        Throwable t = unwrap(raw);
         RuntimeErrors.record(feature, site, t);
         try {
             if (owner != null) owner.noteRuntimeError(t);
         } catch (Throwable ignore) {
-
+            
         }
         HookLog.e(site + " 运行期异常", t);
+    }
+
+    private static Throwable unwrap(Throwable t) {
+        Throwable cur = t;
+        for (int i = 0; i < 8 && cur != null; i++) {
+            if (!(cur instanceof java.lang.reflect.InvocationTargetException)
+                    && !(cur instanceof java.lang.reflect.UndeclaredThrowableException)) {
+                return cur;
+            }
+            Throwable c = cur.getCause();
+            if (c == null || c == cur) return cur;
+            cur = c;
+        }
+        return cur == null ? t : cur;
     }
 
     public static Object replace(Member m, final Action a) {
@@ -99,12 +118,39 @@ public final class HookApi {
         }
     }
 
+    
+
     public static Class<?> findClass(ClassLoader cl, String... names) {
         for (String n : names) {
             Class<?> c = XposedHelpers.findClassIfExists(n, cl);
             if (c != null) return c;
         }
+
+        
+        
+        for (String n : names) {
+            if (n == null || n.indexOf('$') < 0) continue;
+            int cut = n.lastIndexOf('$');
+            if (cut <= 0) continue;
+            String outerName = n.substring(0, cut);
+            if (outerName.endsWith("$")) continue;
+            try {
+                Class<?> outer = XposedHelpers.findClassIfExists(outerName, cl);
+                if (outer != null) {
+                    hookLogInfo("findClass 兜底：合成内部类 " + n + " → 外部类 " + outerName);
+                    return outer;
+                }
+            } catch (Throwable ignore) {
+            }
+        }
         return null;
+    }
+
+    private static void hookLogInfo(String msg) {
+        try {
+            HookLog.i(msg);
+        } catch (Throwable ignore) {
+        }
     }
 
     public static Class<?> findClassCached(ClassLoader cl, String... names) {
@@ -135,7 +181,7 @@ public final class HookApi {
                 .key("M", cls, ret, params);
         Method hit = com.cathelperawa.owo.app.util.ReflectCache.method(ck);
         if (hit != null) return hit;
-
+        
         if (com.cathelperawa.owo.app.util.ReflectCache.isMethodMiss(ck)) return null;
 
         try {
@@ -149,12 +195,12 @@ public final class HookApi {
             if (m != null) {
                 return com.cathelperawa.owo.app.util.ReflectCache.putMethod(ck, m);
             }
-
+            
         } catch (Throwable t) {
             HookLog.w("MethodPicker 打分失败，回退老逻辑: " + t);
         }
         Method legacy = findMethodByParamsLegacy(cls, ret, params);
-
+        
         if (legacy != null) {
             return com.cathelperawa.owo.app.util.ReflectCache.putMethod(ck, legacy);
         }
@@ -171,7 +217,7 @@ public final class HookApi {
             boolean ok = true;
             for (int i = 0; i < ps.length; i++) {
                 if (params[i] != null && !params[i].isAssignableFrom(ps[i])) {
-
+                    
                     if (!ps[i].isAssignableFrom(params[i])) {
                         ok = false;
                         break;

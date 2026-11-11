@@ -26,6 +26,7 @@ public final class GrayTipApi {
         return GrayTip.add(busiId, contact, json);
     }
 
+    
     public static String itemText(String txt) { return GrayTip.itemText(txt); }
 
     public static String itemUser(String nick, String uid, String uin) {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 功能项 tag 用（避免重复挂监听） -->
     <item name="item_pull_msg" type="id" />
     <item name="item_send_panel" type="id" />
 </resources>

@@ -32,14 +32,14 @@ public class ReportProvider extends ContentProvider {
         if (uri == null) return null;
         String name = uri.getLastPathSegment();
         if (name == null || name.isEmpty()) return null;
-
+        
         if (name.contains("/") || name.contains("\\") || name.contains("..")) return null;
         Context ctx = getContext();
         if (ctx == null) return null;
         File dir = new File(ctx.getCacheDir(), SUB_DIR);
         File f = new File(dir, name);
         try {
-
+            
             if (!f.getCanonicalPath().startsWith(dir.getCanonicalPath() + File.separator)) {
                 return null;
             }
@@ -53,7 +53,7 @@ public class ReportProvider extends ContentProvider {
     public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
         File f = resolve(uri);
         if (f == null) throw new FileNotFoundException(String.valueOf(uri));
-
+        
         return ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
     }
 
@@ -82,16 +82,16 @@ public class ReportProvider extends ContentProvider {
 
     @Override
     public Uri insert(Uri uri, ContentValues values) {
-        return null;
+        return null;    
     }
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-        return 0;
+        return 0;       
     }
 
     @Override
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        return 0;
+        return 0;       
     }
 }

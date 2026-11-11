@@ -14,20 +14,62 @@ import android.widget.TextView;
 
 public abstract class Page {
 
-    public static final String PAGE_CHAT = "chat";
+    
 
+    
+    private static final java.util.WeakHashMap<View, Page> REG =
+            new java.util.WeakHashMap<View, Page>();
+
+    protected static void bindPage(View v, Page page) {
+        if (v == null || page == null) return;
+        REG.put(v, page);
+    }
+
+    public static Page pageOf(View v) {
+        return v == null ? null : REG.get(v);
+    }
+
+    public boolean onBack() {
+        return false;
+    }
+
+    public static final String PAGE_CHAT = "chat";
+    
+    public static final String PAGE_GROUP = "group";
+    
     public static final String PAGE_UNLOCK = "unlock";
+    
+    public static final String PAGE_PARSE = "parse";
+    
+    public static final String PAGE_FILE = "file";
+    
+    public static final String PAGE_FAKE = "fake";
+    public static final String PAGE_REDPACKET = "redpacket";
     public static final String PAGE_MSG = "msg";
     public static final String PAGE_CAT = "cat_engine";
     public static final String PAGE_SCOPE = "scope";
     public static final String PAGE_HOOK = "hook";
-
+    
     public static final String PAGE_STATUS = "status";
-
+    
+    public static final String PAGE_FULLCHECK = "fullcheck";
+    
     public static final String PAGE_CONFIG = "config";
+    public static final String PAGE_RP_AUTO = "rp_auto_set";
+    public static final String PAGE_RP_MANUAL = "rp_manual_set";
+    
+    public static final String PAGE_CLOCKIN = "clockin_set";
+    
+    public static final String PAGE_MSGTIME = "msgtime_set";
+    
+    public static final String PAGE_SEND = "send";
+    
+    public static final String PAGE_ANTI = "anti_detect_set";
+    
+    public static final String PAGE_CARD = "card_set";
 
     public interface Host {
-
+        
         Context context();
 
         void close();
@@ -38,6 +80,8 @@ public abstract class Page {
 
         void setPageView(View v);
 
+        void pushPage(View v);
+
         void bindSwitch(String uiKey, SwitchBox box, Runnable onSynced);
 
         void setHeroTimer(java.util.Timer t);
@@ -45,6 +89,8 @@ public abstract class Page {
         void setHomeScroll(ScrollView sv);
 
         void openTerminal();
+
+        void showApiDialog();
     }
 
     protected final Host host;
@@ -104,8 +150,23 @@ public abstract class Page {
 
     protected LinearLayout pageRoot(String titleText, String subText, View[] out,
                                     final boolean fadeBack, int topMarginDp) {
+        return pageRoot(titleText, subText, out, fadeBack, topMarginDp, "bg");
+    }
+
+    protected LinearLayout pageRoot(String titleText, String subText, View[] out,
+                                    final boolean fadeBack, int topMarginDp, String bgName) {
+        return pageRoot(titleText, subText, out, fadeBack, topMarginDp, bgName, 0xC7);
+    }
+
+    protected LinearLayout pageRoot(String titleText, String subText, View[] out,
+                                    final boolean fadeBack, int topMarginDp,
+                                    String bgName, int veilAlpha) {
         FrameLayout pageRoot = new FrameLayout(ctx);
-        Bitmap bgBmp = bg();
+        
+        String bgOverride = com.cathelperawa.owo.app.core.Skin.bg(bgName);
+        Bitmap bgBmp = bgOverride != null
+                ? android.graphics.BitmapFactory.decodeFile(bgOverride)
+                : image(bgName);
         if (bgBmp != null) {
             ImageView bgv = new ImageView(ctx);
             bgv.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -113,8 +174,11 @@ public abstract class Page {
             pageRoot.addView(bgv, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             View veil = new View(ctx);
+            int a = veilAlpha & 0xFF;
             veil.setBackgroundDrawable(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{0xC7E4EFFF, 0xC7F4EBFF, 0xCCFFE9F1}));
+                    new int[]{(a << 24) | 0xE4EFFF,
+                              (a << 24) | 0xF4EBFF,
+                              (Math.min(0xFF, a + 5) << 24) | 0xFFE9F1}));
             pageRoot.addView(veil, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         } else {
@@ -143,13 +207,17 @@ public abstract class Page {
         back.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 press(v);
+                
+                if (onBack()) return;
                 if (fadeBack) host.closeWithFade(); else host.close();
             }
         });
         LinearLayout tb = new LinearLayout(ctx);
         tb.setOrientation(LinearLayout.VERTICAL);
         tb.addView(text(titleText, 24, 0xFF6F86A8, true, dp(1)));
-        tb.addView(text(subText, 12, 0xFF9FB0C7, false, 0));
+        if (subText != null && subText.length() > 0) {
+            tb.addView(text(subText, 11, 0xFFA9B7C9, false, 0));
+        }
         topbar.addView(tb, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(topbar, matchWrap(dp(topMarginDp)));
@@ -158,6 +226,7 @@ public abstract class Page {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         out[0] = pageRoot;
         out[1] = root;
+        bindPage(pageRoot, this);
         return root;
     }
 
@@ -166,15 +235,78 @@ public abstract class Page {
         root.animate().alpha(1f).setDuration(380).start();
     }
 
+    
+
+    
+    protected void scrollIntoView(final View target, final View from) {
+        target.post(new Runnable() {
+            @Override public void run() {
+                try {
+                    ScrollView sv = findScroll(from);
+                    if (sv == null || sv.getChildCount() == 0) return;
+                    View content = sv.getChildAt(0);
+                    int y = 0;
+                    View v = target;
+                    while (v != null && v != content && v != sv) {
+                        y += v.getTop();
+                        if (!(v.getParent() instanceof View)) break;
+                        v = (View) v.getParent();
+                    }
+                    int bottom = y + target.getHeight();
+                    int visibleH = sv.getHeight() - sv.getPaddingTop() - sv.getPaddingBottom();
+                    if (visibleH <= 0) return;
+                    int margin = dp(18);
+                    int want = bottom + margin - visibleH;
+                    if (bottom + margin > sv.getScrollY() + visibleH) {
+                        sv.smoothScrollTo(0, Math.max(0, want));
+                    }
+                } catch (Throwable ignore) {
+                }
+            }
+        });
+    }
+
+    protected ScrollView findScroll(View from) {
+        View p = from;
+        while (p != null) {
+            if (p instanceof ScrollView) return (ScrollView) p;
+            if (!(p.getParent() instanceof View)) return null;
+            p = (View) p.getParent();
+        }
+        return null;
+    }
+
+    protected void showKeyboard(View v) {
+        try {
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager)
+                            ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(v, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
+    protected void hideKeyboard(View v) {
+        try {
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager)
+                            ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+        } catch (Throwable ignore) {
+        }
+    }
+
     protected LinearLayout pageRootEx(String titleText, String subText, View[] out) {
         LinearLayout root = pageRoot(titleText, subText, out);
 
         LinearLayout topbar = (LinearLayout) root.getChildAt(0);
-
+        
         LinearLayout tb = (LinearLayout) topbar.getChildAt(1);
         TextView sub = (TextView) tb.getChildAt(1);
         if (out.length < 4) {
-
+            
             throw new IllegalArgumentException(
                     "pageRootEx 需要 out 至少 4 个槽位，实际 " + out.length);
         }
@@ -187,6 +319,7 @@ public abstract class Page {
         return (Activity) ctx;
     }
 
+    
     protected boolean cfgGet(String key, boolean def) {
         return UiConfig.get(ctx, key, def);
     }

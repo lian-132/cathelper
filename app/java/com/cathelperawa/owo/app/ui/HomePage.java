@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.ui;
 
 import android.content.Context;
+import com.cathelperawa.owo.app.core.Bg;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -59,7 +60,7 @@ public final class HomePage extends Page {
         scroll.setBackgroundColor(Color.TRANSPARENT);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setVerticalScrollBarEnabled(false);
-
+        
         scroll.setId(0x7f0f0001);
         page.setBackgroundDrawable(new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
@@ -76,17 +77,33 @@ public final class HomePage extends Page {
         topbar.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout tbTexts = new LinearLayout(ctx);
         tbTexts.setOrientation(LinearLayout.VERTICAL);
-        tbTexts.addView(text("猫娘助手", 27, 0xFF6F86A8, true, dp(1)));
-        tbTexts.addView(text("TIM 增强 · 控制台", 12, 0xFF9FB0C7, false, 0));
+        
+        org.json.JSONObject hst = com.cathelperawa.owo.app.core.Skin.style("home.header");
+        int hTitleSize = hst.optInt("titleSize", 27);
+        int hSubSize = hst.optInt("subSize", 12);
+        tbTexts.addView(text(com.cathelperawa.owo.app.core.Skin.text("home.title", "猫娘助手"), hTitleSize,
+                com.cathelperawa.owo.app.ui.Theme.parse(hst.optString("titleColor", ""), 0xFF6F86A8), true, dp(1)));
+        tbTexts.addView(text(com.cathelperawa.owo.app.core.Skin.text("home.subtitle",
+                        com.cathelperawa.owo.app.core.Host.isQQ() ? "QQ 增强 · 控制台" : "TIM 增强 · 控制台"), hSubSize,
+                com.cathelperawa.owo.app.ui.Theme.parse(hst.optString("subColor", ""), 0xFF9FB0C7), false, 0));
         topbar.addView(tbTexts, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        TextView refresh = text("↻", 21, 0xFF9FC0F5, true, 0);
-        refresh.setGravity(Gravity.CENTER);
+
+        
+        FrameLayout refresh = new FrameLayout(ctx);
         GradientDrawable rbg = new GradientDrawable();
         rbg.setShape(GradientDrawable.OVAL);
         rbg.setColor(0xE6FFFFFF);
         refresh.setBackgroundDrawable(rbg);
-        topbar.addView(refresh, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        RefreshIcon glyph = new RefreshIcon(ctx);
+        FrameLayout.LayoutParams glyphLp = new FrameLayout.LayoutParams(
+                dp(22), dp(22), Gravity.CENTER);
+        refresh.addView(glyph, glyphLp);
+
+        topbar.addView(refresh, new LinearLayout.LayoutParams(
+                "0".equals(hst.optString("showRefresh", "1")) ? 0 : dp(42),
+                "0".equals(hst.optString("showRefresh", "1")) ? 0 : dp(42)));
         refresh.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 spin(v);
@@ -95,10 +112,19 @@ public final class HomePage extends Page {
         });
         root.addView(topbar, matchWrap(dp(13)));
 
+        
+        org.json.JSONObject hstHero = com.cathelperawa.owo.app.core.Skin.style("home.hero");
+        int hyRadius = hstHero.optInt("radius", 26);
+        int hyImgH = hstHero.optInt("imageHeight", 178);
+        int hyTitleSize = hstHero.optInt("titleSize", 21);
+        int hyDescSize = hstHero.optInt("descSize", 12);
+        boolean hyChips = !"0".equals(hstHero.optString("showChips", "1"));
+        boolean hyGear = !"0".equals(hstHero.optString("showGear", "1"));
+        boolean hyDots = !"0".equals(hstHero.optString("showDots", "1"));
         FrameLayout hero = new FrameLayout(ctx);
         GradientDrawable heroStroke = new GradientDrawable();
         heroStroke.setColor(0xFFFFFFFF);
-        heroStroke.setCornerRadius(dp(26));
+        heroStroke.setCornerRadius(dp(hyRadius));
         heroStroke.setStroke(dp(1), 0x77FFFFFF);
         hero.setBackgroundDrawable(heroStroke);
         hero.setClipToOutline(true);
@@ -108,7 +134,7 @@ public final class HomePage extends Page {
         final ImageView heroIv = new ImageView(ctx);
         heroIv.setScaleType(ImageView.ScaleType.CENTER_CROP);
         hero.addView(heroIv, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, dp(178)));
+                FrameLayout.LayoutParams.MATCH_PARENT, dp(hyImgH)));
         final int[] cur = {0};
         final View[] dots = new View[HERO_IMGS.length];
 
@@ -142,8 +168,10 @@ public final class HomePage extends Page {
         hshade.setBackgroundDrawable(new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x00FFFFFF, 0x99FFFFFF, 0xFAFFFFFF}));
-        hero.addView(hshade, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, dp(112), Gravity.BOTTOM));
+        if (hyImgH > 0) {
+            hero.addView(hshade, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, dp(112), Gravity.BOTTOM));
+        }
 
         LinearLayout heroTexts = new LinearLayout(ctx);
         heroTexts.setOrientation(LinearLayout.VERTICAL);
@@ -153,8 +181,10 @@ public final class HomePage extends Page {
         tagWrap.setOrientation(LinearLayout.HORIZONTAL);
         tagWrap.addView(tag, wrapWrap());
         heroTexts.addView(tagWrap, matchWrap(dp(7)));
-        heroTexts.addView(text("猫娘化引擎", 21, 0xFF4F6485, true, dp(3)));
-        final TextView desc = text("模块已就绪，等待开启", 12, 0xFF8A9CB5, false, 0);
+        heroTexts.addView(text(com.cathelperawa.owo.app.core.Skin.text("home.hero.title", "猫娘化引擎"), hyTitleSize,
+                com.cathelperawa.owo.app.ui.Theme.parse(hstHero.optString("titleColor", ""), 0xFF4F6485), true, dp(3)));
+        final TextView desc = text(com.cathelperawa.owo.app.core.Skin.text("home.hero.desc", "模块已就绪，等待开启"), hyDescSize,
+                com.cathelperawa.owo.app.ui.Theme.parse(hstHero.optString("descColor", ""), 0xFF8A9CB5), false, 0);
         heroTexts.addView(desc);
         hero.addView(heroTexts, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -190,24 +220,55 @@ public final class HomePage extends Page {
                 FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
         gp.rightMargin = dp(14);
         gp.topMargin = dp(14);
-        hero.addView(gear, gp);
+        if (hyGear) hero.addView(gear, gp);
         gear.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { press(v); host.open(PAGE_CAT, "猫娘化引擎"); }
         });
 
         LinearLayout chips = new LinearLayout(ctx);
         chips.setOrientation(LinearLayout.HORIZONTAL);
+        TextView apiChip = UiKit.chip(ctx, "API");
+        apiChip.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { press(v); host.showApiDialog(); }
+        });
+        chips.addView(apiChip);
         TextView termChip = UiKit.chip(ctx, "终端");
-        chips.addView(termChip);
+        LinearLayout.LayoutParams tcp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tcp.leftMargin = dp(8);
+        chips.addView(termChip, tcp);
         termChip.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { press(v); host.openTerminal(); }
+            @Override public void onClick(View v) {
+                press(v);
+                
+                com.cathelperawa.owo.app.ui.TerminalPanel.show(activity());
+            }
         });
         FrameLayout.LayoutParams ap2 = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         ap2.leftMargin = dp(14);
         ap2.topMargin = dp(14);
-        hero.addView(chips, ap2);
+        if (hyChips) hero.addView(chips, ap2);
+
+        org.json.JSONObject chipSt = com.cathelperawa.owo.app.core.Skin.style("home.chip");
+        String chipBg = chipSt.optString("bgColor", "");
+        String chipFg = chipSt.optString("textColor", "");
+        if (chipBg.length() > 0 || chipFg.length() > 0) {
+            int cbg = com.cathelperawa.owo.app.ui.Theme.parse(chipBg, 0xE6FFFFFF);
+            int cfg = com.cathelperawa.owo.app.ui.Theme.parse(chipFg, 0xFF7FA5E6);
+            TextView[] chips3 = new TextView[]{apiChip, termChip, gear};
+            for (int ci = 0; ci < chips3.length; ci++) {
+                try {
+                    GradientDrawable cg = new GradientDrawable();
+                    cg.setColor(cbg);
+                    cg.setCornerRadius(dp(chipSt.optInt("radius", 14)));
+                    chips3[ci].setBackgroundDrawable(cg);
+                    chips3[ci].setTextColor(cfg);
+                } catch (Throwable ignore) {
+                }
+            }
+        }
 
         LinearLayout dotsBar = new LinearLayout(ctx);
         dotsBar.setOrientation(LinearLayout.HORIZONTAL);
@@ -224,54 +285,112 @@ public final class HomePage extends Page {
             dots[i] = d;
             dotsBar.addView(d);
         }
-        hero.addView(dotsBar, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END));
+        if (hyDots) {
+            hero.addView(dotsBar, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END));
+        }
         root.addView(hero, matchWrap(dp(11)));
 
+        
         String[][] ENTRIES = {
                 {"聊天功能", "让聊天更顺喵～", "art1", PAGE_CHAT},
+                {"群管理", "群主便捷菜单 · 群信息", "h_group_card", PAGE_GROUP},
                 {"去除限制", "转发 · 拍一拍 · 多选撤回", "art3", PAGE_UNLOCK},
+                {"解析功能", "音乐 · 视频，链接变文件", "art9", PAGE_PARSE},
+                {"文件功能", "上传 APK 自动改名", "art8", PAGE_FILE},
+                {"伪造功能", "伪装网络 · 自定义设备", "art7", PAGE_FAKE},
+                {"红包功能", "手动打开 · 自动领取", "art5", PAGE_REDPACKET},
                 {"Hook 功能", "长按抓取 · 自动抓取", "art4", PAGE_HOOK},
                 {"功能状态", "体检 · 哪些没起来", "art6", PAGE_STATUS},
+                {"防检测", "掐断崩溃 · 统计上报", "art1", PAGE_ANTI},
                 {"配置备份", "导出导入备份", "art2", PAGE_CONFIG},
         };
+
+        
+        if (com.cathelperawa.owo.app.core.UIScope.isQQ()) {
+            java.util.ArrayList<String[]> keep = new java.util.ArrayList<>();
+            for (String[] e : ENTRIES) {
+                String k = e[3];
+                if (PAGE_CHAT.equals(k) || PAGE_FILE.equals(k)
+                        || PAGE_FAKE.equals(k) || PAGE_HOOK.equals(k)
+                        || PAGE_STATUS.equals(k) || PAGE_ANTI.equals(k)
+                        || PAGE_CONFIG.equals(k)) {
+                    keep.add(e);
+                }
+            }
+            ENTRIES = keep.toArray(new String[0][]);
+        }
         for (int i = 0; i < ENTRIES.length; i++) {
             final String pageKey = ENTRIES[i][3];
-            final String title = ENTRIES[i][0];
-            final String sub = ENTRIES[i][1];
+            
+            if (com.cathelperawa.owo.app.core.Skin.hidden("home." + pageKey)) continue;
+            
+            final String title = com.cathelperawa.owo.app.core.Skin
+                    .text("home." + pageKey + ".title", ENTRIES[i][0]);
+            final String sub = com.cathelperawa.owo.app.core.Skin
+                    .text("home." + pageKey + ".sub", ENTRIES[i][1]);
 
-            FrameLayout entry = whiteFrame(dp(20), 0x8CFFFFFF);
+            org.json.JSONObject st = com.cathelperawa.owo.app.core.Skin.style("home.card");
+            int stRadius = st.optInt("radius", 20);
+            int stGap = st.optInt("gap", 11);
+            int stImgH = st.optInt("imageHeight", 78);      
+            int stPadX = st.optInt("padX", 14);
+            int stMinH = st.optInt("minHeight", 0);
+            int stTitleSize = st.optInt("titleSize", 16);
+            int stSubSize = st.optInt("subSize", 11);
+            String stCard = st.optString("bgColor", "");
+            String stTitleColor = st.optString("titleColor", "");
+            String stSubColor = st.optString("subColor", "");
+            String stArrowColor = st.optString("arrowColor", "");
+            boolean stShadow = !"0".equals(st.optString("shadow", "1"));
+
+            FrameLayout entry = whiteFrame(dp(stRadius), stCard.length() > 0
+                    ? com.cathelperawa.owo.app.ui.Theme.parse(stCard, 0x8CFFFFFF) : 0x8CFFFFFF);
             entry.setClipToOutline(true);
-            Bitmap eb = image(ENTRIES[i][2]);
-            if (eb != null) {
-                ImageView eiv = new ImageView(ctx);
-                eiv.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                eiv.setImageBitmap(eb);
-                entry.addView(eiv, new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT, dp(78)));
-                View esh = new View(ctx);
-                esh.setBackgroundDrawable(new GradientDrawable(
-                        GradientDrawable.Orientation.LEFT_RIGHT,
-                        new int[]{0xF7FFFFFF, 0xA6FFFFFF, 0x33FFFFFF}));
-                entry.addView(esh, new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT, dp(78)));
+            if (stMinH > 0) entry.setMinimumHeight(dp(stMinH));
+            if (!stShadow) entry.setElevation(0);
+
+            if (stImgH > 0) {
+                String bgFile = com.cathelperawa.owo.app.core.Skin.bg(ENTRIES[i][2]);
+                Bitmap eb = bgFile != null
+                        ? (bgFile.startsWith("#")
+                            ? solidBitmap(com.cathelperawa.owo.app.ui.Theme.parse(bgFile, 0x8CFFFFFF))
+                            : android.graphics.BitmapFactory.decodeFile(bgFile))
+                        : image(ENTRIES[i][2]);
+                if (eb != null) {
+                    ImageView eiv = new ImageView(ctx);
+                    eiv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    eiv.setImageBitmap(eb);
+                    entry.addView(eiv, new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT, dp(stImgH)));
+                    View esh = new View(ctx);
+                    esh.setBackgroundDrawable(new GradientDrawable(
+                            GradientDrawable.Orientation.LEFT_RIGHT,
+                            new int[]{0xF7FFFFFF, 0xA6FFFFFF, 0x33FFFFFF}));
+                    entry.addView(esh, new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT, dp(stImgH)));
+                }
             }
+
             LinearLayout et = new LinearLayout(ctx);
             et.setOrientation(LinearLayout.VERTICAL);
-            et.addView(text(title, 16, 0xFF43587A, true, dp(1)));
-            et.addView(text(sub, 11, 0xFF8496AE, false, 0));
+            et.addView(text(title, stTitleSize,
+                    com.cathelperawa.owo.app.ui.Theme.parse(stTitleColor, 0xFF43587A), true, dp(1)));
+            et.addView(text(sub, stSubSize,
+                    com.cathelperawa.owo.app.ui.Theme.parse(stSubColor, 0xFF8496AE), false, 0));
             FrameLayout.LayoutParams etp = new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.WRAP_CONTENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.START | Gravity.CENTER_VERTICAL);
-            etp.leftMargin = dp(14);
+            etp.leftMargin = dp(stPadX);
             entry.addView(et, etp);
 
-            TextView arrow = text("›", 22, 0xFFB0BDD1, true, 0);
+            TextView arrow = text("›", 22,
+                    com.cathelperawa.owo.app.ui.Theme.parse(stArrowColor, 0xFFB0BDD1), true, 0);
             FrameLayout.LayoutParams arp = new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.WRAP_CONTENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.CENTER_VERTICAL);
-            arp.rightMargin = dp(14);
+            arp.rightMargin = dp(stPadX);
             entry.addView(arrow, arp);
 
             entry.setOnClickListener(new View.OnClickListener() {
@@ -280,7 +399,39 @@ public final class HomePage extends Page {
                     host.open(pageKey, title);
                 }
             });
-            root.addView(entry, matchWrap(dp(11)));
+            root.addView(entry, matchWrap(dp(stGap)));
+        }
+
+        try {
+            java.util.List<String[]> sp = com.cathelperawa.owo.app.ui.ScriptScreen.declaredPages();
+            for (int i = 0; i < sp.size(); i++) {
+                final String key = sp.get(i)[0];
+                final String spTitle = sp.get(i)[1];
+                String sub = sp.get(i)[2];
+                LinearLayout card = whiteCard(dp(20), 0x8CFFFFFF);
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                card.setPadding(dp(15), dp(14), dp(15), dp(14));
+
+                LinearLayout left = new LinearLayout(ctx);
+                left.setOrientation(LinearLayout.VERTICAL);
+                left.addView(text(spTitle, 16, 0xFF43587A, true, dp(2)));
+                if (sub != null && sub.length() > 0) {
+                    left.addView(text(sub, 11, 0xFF8496AE, false, 0));
+                }
+                card.addView(left, new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                card.addView(text("›", 22, 0xFFB0BDD1, true, 0));
+
+                card.setOnClickListener(new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        press(v);
+                        host.open(key, spTitle);
+                    }
+                });
+                root.addView(card, matchWrap(dp(11)));
+            }
+        } catch (Throwable ignore) {
         }
 
         root.addView(buildHostCard(), matchWrap(dp(11)));
@@ -310,7 +461,9 @@ public final class HomePage extends Page {
                 : (active ? "LSPosed" : "—");
 
         String hostVer = HostInfo.hostVersion();
-        String hostTxt = hostVer != null ? ("TIM " + hostVer) : "—";
+        String hostTxt = hostVer != null
+                ? ((com.cathelperawa.owo.app.core.Host.isQQ() ? "QQ " : "TIM ") + hostVer)
+                : "—";
 
         String scopeTxt = HostInfo.activeScope();
         if (scopeTxt == null || scopeTxt.length() == 0) {
@@ -323,6 +476,9 @@ public final class HomePage extends Page {
                 {"框架版本", fwTxt},
                 {"宿主版本", hostTxt},
                 {"作用域", scopeTxt},
+
+                {"构建时间", com.cathelperawa.owo.app.BuildInfo.BUILD_TIME},
+                {"构建标识", com.cathelperawa.owo.app.BuildInfo.BUILD_UUID},
         };
         for (String[] r : rows) {
             LinearLayout rl = new LinearLayout(ctx);
@@ -330,7 +486,7 @@ public final class HomePage extends Page {
             rl.addView(text(r[0], 12.5f, 0xFF8A9CB5, false, dp(4)),
                     new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             TextView tv = text(r[1], 12.5f, 0xFF7FA5E6, true, dp(4));
-
+            
             if (("模块状态".equals(r[0]) || "加载方式".equals(r[0])) && !active) {
                 tv.setTextColor(0xFFE57373);
             }
@@ -382,6 +538,9 @@ public final class HomePage extends Page {
         return page;
     }
 
+    
+
+    
     private View buildHostCard() {
         LinearLayout card = whiteCard(dp(22), 0xB8FFFFFF);
         card.setOrientation(LinearLayout.HORIZONTAL);
@@ -450,7 +609,7 @@ public final class HomePage extends Page {
         }
         final String url = HostInfo.avatarUrl();
         if (url == null) return;
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 try {
                     java.net.URL u = new java.net.URL(url);
@@ -470,10 +629,10 @@ public final class HomePage extends Page {
                     } catch (Throwable ignore) {
                     }
                 } catch (Throwable ignore) {
-
+                    
                 }
             }
-        }, "cat-avatar").start();
+        }, "cat-avatar");
     }
 
     private static Bitmap circleCrop(Bitmap src) {
@@ -511,7 +670,7 @@ public final class HomePage extends Page {
     }
 
     private void refreshHero(TextView tag, TextView desc) {
-        boolean total = cfgGet("cat_total", false);
+        boolean total = cfgGet("cat_total", true);
         int on = 0;
         for (String[] sw : CAT_SWITCHES) {
             if (!"cat_total".equals(sw[0]) && cfgGet(sw[0], true)) on++;
@@ -524,12 +683,16 @@ public final class HomePage extends Page {
                 : "总开关已关，猫娘化暂停");
     }
 
+    
+
+    
+    
     private void confirmRestart(Context c) {
         try {
             new android.app.AlertDialog.Builder(
                     c, android.app.AlertDialog.THEME_DEVICE_DEFAULT_LIGHT)
-                    .setTitle("重启 TIM")
-                    .setMessage("TIM 会立刻退出并重新打开喵～")
+                    .setTitle("重启 " + com.cathelperawa.owo.app.core.Host.name())
+                    .setMessage(com.cathelperawa.owo.app.core.Host.name() + " 会立刻退出并重新打开喵～")
                     .setPositiveButton("重启", new android.content.DialogInterface.OnClickListener() {
                         @Override public void onClick(android.content.DialogInterface d, int w) {
                             doRestart();
@@ -538,7 +701,7 @@ public final class HomePage extends Page {
                     .setNegativeButton("取消", null)
                     .show();
         } catch (Throwable t) {
-            doRestart();
+            doRestart();   
         }
     }
 
@@ -547,7 +710,7 @@ public final class HomePage extends Page {
             com.cathelperawa.owo.app.MsgStore.add("[重启] 用户点了重启，准备杀进程");
         } catch (Throwable ignore) {
         }
-
+        
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
                 new Runnable() {
                     @Override public void run() {
@@ -557,5 +720,15 @@ public final class HomePage extends Page {
                         }
                     }
                 }, 300);
+    }
+
+    private Bitmap solidBitmap(int color) {
+        try {
+            Bitmap bm = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888);
+            new android.graphics.Canvas(bm).drawColor(color);
+            return bm;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 }

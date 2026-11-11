@@ -210,7 +210,7 @@ public class CustomStyleActivity extends Activity {
         try {
             startActivityForResult(it, req);
         } catch (Exception e) {
-
+            
             try {
                 Intent fb = new Intent(Intent.ACTION_GET_CONTENT);
                 fb.setType("image/*");
@@ -229,7 +229,7 @@ public class CustomStyleActivity extends Activity {
         Uri uri = data.getData();
 
         String key = (requestCode == REQ_BG) ? "customBg" : "customFloatIcon";
-
+        
         boolean circle = (requestCode == REQ_FLOAT);
         String saved = importImage(uri, key, circle);
         if (saved == null) {
@@ -247,7 +247,7 @@ public class CustomStyleActivity extends Activity {
         InputStream in2 = null;
         FileOutputStream out = null;
         try {
-
+            
             BitmapFactory.Options opt = new BitmapFactory.Options();
             opt.inJustDecodeBounds = true;
             in = getContentResolver().openInputStream(uri);

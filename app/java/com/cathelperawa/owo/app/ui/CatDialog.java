@@ -32,6 +32,9 @@ public final class CatDialog {
         return null;
     }
 
+    
+
+    
     public static void pick(final Context ctx, final String title,
                             final String[] items, final OnPick cb) {
         final Activity a = act(ctx);
@@ -59,6 +62,9 @@ public final class CatDialog {
         } });
     }
 
+    
+
+    
     public static void input(final Context ctx, String title, String hint,
                              String value, final boolean multi, final OnText cb) {
         final Activity a = act(ctx);
@@ -103,6 +109,9 @@ public final class CatDialog {
         } });
     }
 
+    
+
+    
     public static void custom(final Context ctx, String title, View body,
                               String okLabel, final Runnable onOk) {
         final Activity a = act(ctx);
@@ -133,6 +142,9 @@ public final class CatDialog {
         } });
     }
 
+    
+
+    
     public static void info(final Context ctx, String title, String msg) {
         final Activity a = act(ctx);
         if (a == null) return;

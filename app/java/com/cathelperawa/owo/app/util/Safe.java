@@ -12,6 +12,9 @@ public final class Safe {
         T call() throws Throwable;
     }
 
+    
+
+    
     public static void probe(String what, Action a) {
         try {
             a.run();
@@ -29,6 +32,9 @@ public final class Safe {
         }
     }
 
+    
+
+    
     public static <T> T attempt(String what, Callable<T> c, T fallback) {
         try {
             return c.call();
@@ -48,6 +54,9 @@ public final class Safe {
         }
     }
 
+    
+
+    
     public static <T> T critical(String what, Callable<T> c) {
         try {
             return c.call();
@@ -66,6 +75,9 @@ public final class Safe {
         }
     }
 
+    
+
+    
     @SuppressWarnings("unchecked")
     private static <E extends Throwable> RuntimeException rethrow(Throwable t) throws E {
         throw (E) t;

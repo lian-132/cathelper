@@ -16,6 +16,12 @@ public final class CatProcessor {
         if (msg == null) return "";
         if (!cfg.total) return msg;
 
+        if (com.cathelperawa.owo.app.script.StrategyRegistry.has("catify.transform")) {
+            String custom = com.cathelperawa.owo.app.script.StrategyRegistry
+                    .pick("catify.transform", msg, null);
+            if (custom != null) return custom;
+        }
+
         if (cfg.keywordReply) {
             String hit = hitCustomReply(msg, cfg.parseCustomReplies());
             if (hit != null) return hit;
@@ -56,7 +62,7 @@ public final class CatProcessor {
                     .replaceAll("哦(?!喵)", "哦喵")
                     .replaceAll("嗯(?!喵)", "嗯喵");
         }
-
+        
         if (!wholeHit) msg = modifyEnd(msg, cfg.endMeow);
 
         if (cfg.randomCute) msg = randomCute(msg);

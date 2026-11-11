@@ -48,11 +48,27 @@ public class FunProtoData {
                             putValue(parseInt, obj2);
                         }
                     }
+                } else if (obj instanceof String
+                        && ((String) obj).startsWith("hex->")) {
+                    putValue(parseInt, hexToBytes(((String) obj).substring(5)));
                 } else {
                     putValue(parseInt, obj);
                 }
             }
         } catch (Exception unused) {
+        }
+    }
+
+    public static byte[] hexToBytes(String h) {
+        try {
+            int n = h.length() / 2;
+            byte[] out = new byte[n];
+            for (int i = 0; i < n; i++) {
+                out[i] = (byte) Integer.parseInt(h.substring(i * 2, i * 2 + 2), 16);
+            }
+            return out;
+        } catch (Throwable t) {
+            return new byte[0];
         }
     }
 
@@ -169,6 +185,8 @@ public class FunProtoData {
                 for (Object obj : this.values.get(num)) {
                     if (obj instanceof Long) {
                         newInstance.writeInt64(num.intValue(), ((Long) obj).longValue());
+                    } else if (obj instanceof byte[]) {
+                        newInstance.writeByteArray(num.intValue(), (byte[]) obj);
                     } else if (obj instanceof String) {
                         newInstance.writeByteArray(num.intValue(), ((String) obj).getBytes());
                     } else if (obj instanceof FunProtoData) {

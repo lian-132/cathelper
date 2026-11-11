@@ -13,6 +13,8 @@ import com.cathelperawa.owo.app.MsgStore;
 
 public final class HookPage extends Page {
 
+    public static final String KEY_SEND = "hook_send_proto";
+
     private static final String[][] HOOK_SWITCHES = {
             {"hook_capture", "长按提取", "长按消息出现「提取」按钮（原始协议数据）"},
             {"hook_autocap", "自动抓取消息", "收发消息自动记录到控制台"},
@@ -49,7 +51,8 @@ public final class HookPage extends Page {
         LinearLayout ht = new LinearLayout(ctx);
         ht.setOrientation(LinearLayout.VERTICAL);
         ht.setPadding(dp(16), 0, dp(16), dp(14));
-        boolean anyOn = cfgGet("hook_capture", false) || cfgGet("hook_autocap", false);
+        boolean anyOn = cfgGet("hook_capture", true) || cfgGet("hook_autocap", true)
+                || cfgGet(KEY_SEND, true);
         LinearLayout hw = new LinearLayout(ctx);
         hw.setOrientation(LinearLayout.HORIZONTAL);
         final TextView heroTag = pill(anyOn ? "运行中" : "已关闭",
@@ -66,7 +69,8 @@ public final class HookPage extends Page {
         String[] hookArts = {"art1", "art2"};
         final Runnable refreshHero = new Runnable() {
             @Override public void run() {
-                boolean on = swOn("hook_capture") || swOn("hook_autocap");
+                boolean on = swOn("hook_capture") || swOn("hook_autocap")
+                        || swOn(KEY_SEND);
                 heroTag.setText(on ? "运行中" : "已关闭");
                 heroTag.setTextColor(on ? 0xFFF07CA8 : 0xFF7FA5E6);
                 ((GradientDrawable) heroTag.getBackground())
@@ -77,7 +81,7 @@ public final class HookPage extends Page {
             final String[] sw = HOOK_SWITCHES[hi];
             FrameLayout card = whiteFrame(dp(18), 0x8CFFFFFF);
             card.setClipToOutline(true);
-
+            
             Bitmap cb = image(hookArts[Math.min(hi, hookArts.length - 1)]);
             if (cb != null) {
                 ImageView iv = new ImageView(ctx);
@@ -110,7 +114,7 @@ public final class HookPage extends Page {
             card.addView(row, rp2);
             final String key = sw[0];
             final String name = sw[1];
-
+            
             host.bindSwitch(key, box, refreshHero);
             card.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
@@ -123,6 +127,11 @@ public final class HookPage extends Page {
                 }
             });
             root.addView(card, matchWrap(dp(9)));
+            
+            if (hi == 0) {
+                addSendEntry(root, refreshHero);
+                addCardEntry(root);
+            }
         }
 
         FrameLayout msgCard = whiteFrame(dp(18), 0x8CFFFFFF);
@@ -149,5 +158,99 @@ public final class HookPage extends Page {
 
         fadeIn(root);
         return out[0];
+    }
+
+    private void addCardEntry(LinearLayout root) {
+        FrameLayout card = whiteFrame(dp(18), 0x8CFFFFFF);
+        card.setClipToOutline(true);
+
+        Bitmap cb = image("art3");
+        if (cb != null) {
+            ImageView iv = new ImageView(ctx);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setImageBitmap(cb);
+            card.addView(iv, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, dp(72)));
+            View sh = new View(ctx);
+            sh.setBackgroundDrawable(new GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xF7FFFFFF, 0xA6FFFFFF, 0x33FFFFFF}));
+            card.addView(sh, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, dp(72)));
+        }
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(0), dp(14), dp(0));
+
+    }
+
+    private void addSendEntry(LinearLayout root, final Runnable refreshHero) {
+        FrameLayout card = whiteFrame(dp(18), 0x8CFFFFFF);
+        card.setClipToOutline(true);
+
+        Bitmap cb = image("art4");
+        if (cb != null) {
+            ImageView iv = new ImageView(ctx);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setImageBitmap(cb);
+            card.addView(iv, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, dp(72)));
+            View sh = new View(ctx);
+            sh.setBackgroundDrawable(new GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xF7FFFFFF, 0xA6FFFFFF, 0x33FFFFFF}));
+            card.addView(sh, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, dp(72)));
+        }
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(0), dp(14), dp(0));
+
+        LinearLayout texts = new LinearLayout(ctx);
+        texts.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout titleRow = new LinearLayout(ctx);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.addView(text("发送与协议", 15, 0xFF43587A, true, dp(2)));
+        texts.addView(titleRow);
+
+        texts.addView(text("卡片代码 · 消息代码 · PB 工具", 11, 0xFF8496AE, false, 0));
+        row.addView(texts, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        final SwitchBox box = new SwitchBox(ctx, cfgGet(KEY_SEND, true));
+        box.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                boolean now = !swOn(KEY_SEND);
+                swSet(KEY_SEND, now);
+                box.setChecked(now);
+                press(v);
+                refreshHero.run();
+                toast(now ? "发送与协议 开启喵～" : "发送与协议 关闭喵～");
+            }
+        });
+        row.addView(box, new LinearLayout.LayoutParams(dp(52), dp(30)));
+        host.bindSwitch(KEY_SEND, box, refreshHero);
+
+        card.addView(row, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, dp(72)));
+        texts.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                press(v);
+                host.open(PAGE_SEND, "发送与协议");
+            }
+        });
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                press(v);
+                host.open(PAGE_SEND, "发送与协议");
+            }
+        });
+        root.addView(card, matchWrap(dp(9)));
     }
 }

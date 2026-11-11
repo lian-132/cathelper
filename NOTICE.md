@@ -1,6 +1,6 @@
 # 第三方代码声明 / Third-Party Notices
 
-本项目包含来自以下开源项目的代码。原项目的许可证一并适用于对应部分。
+本项目包含来自以下开源项目的代码或数据。原项目的许可证一并适用于对应部分。
 
 ---
 
@@ -10,7 +10,7 @@
 - 许可证：**GPL-3.0**
 - 用途：QQ / TIM 推送协议的 protobuf 定义
 
-**涉及的 proto 文件**（存放于 `app/proto/`）：
+**涉及的上游 proto 定义**（原文件不随本仓库分发，需从 TCQT 仓库获取）：
 
 ```
 InfoSyncPush.proto
@@ -19,7 +19,7 @@ QQMessage.proto
 RecallPush.proto
 ```
 
-**由上述 proto 生成、存放于 `app/java/top/artmoe/inao/entries/` 的 Java 类**：
+**由上述 proto 生成、存放于本仓库 `app/java/top/artmoe/inao/entries/` 的 Java 类**：
 
 ```
 InfoSyncPushOuterClass$1.java
@@ -28,35 +28,37 @@ MsgPushOuterClass$1.java
 MsgPushOuterClass$MsgPush.java
 QQMessageOuterClass$1.java
 QQMessageOuterClass$QQMessage.java
-QQMessageOuterClass$QQMessageOrBuilder.java
+...
 ```
 
-**使用位置**：`app/java/com/cathelperawa/owo/app/feature/AntiRevoke.java`（防撤回功能）
+---
 
-这些类由 protoc 从上游 `.proto` 生成，包名 `top.artmoe.inao.entries` 为上游原始包名，**未做修改**。
-本项目未对这批生成类做逻辑改动。
+## 2. QQ 协议版本数据 — protocol-versions 系列
+
+- 仓库：
+  - https://github.com/GuZhi223/qq-protocol-versions
+  - https://github.com/MrXiaoM/protocol-versions
+  - https://github.com/QsignDevelop/Auto-protocol-versions
+- 用途：`app/assets/sender_version.json` 中的 `subId → 版本号` 映射表
+
+**说明**：这些仓库汇集的是 QQ 官方客户端对外公开的版本信息
+（`subAppId`、`sort_version_name`、`QUA` 等，任何人从安装包即可读取）。
+本项目只做了合并去重，按原样引用。
+
+如需自行生成，把上述仓库的 `android_phone/*.json` 里的
+`sub_app_id` 与 `sort_version_name` 提取出来即可，格式见文件本身。
 
 ---
 
-## 2. ono — cwuom/ono
+## 3. 运行时依赖库
 
-- 仓库：https://github.com/cwuom/ono
-- 许可证：**GPL-3.0**
-- 用途：同上，protobuf 定义的共同上游
+以下 jar 在构建时打入 APK，均为公开发布的第三方库，遵循各自许可证
+（仓库不含这些 jar 本体，构建时从工具链目录读取）：
 
----
-
-## 3. protobuf-javalite
-
-- 项目：https://github.com/protocolbuffers/protobuf
-- 许可证：BSD-3-Clause
-- 用途：protobuf 运行时（`com.google.protobuf` 包）
-
----
-
-## 关于本项目自身的许可证
-
-由于本项目链接了上述 **GPL-3.0** 代码，依据 GPL-3.0 的传染性条款，
-本项目整体同样以 **GPL-3.0** 发布，详见根目录 `LICENSE` 文件。
-
-如果你希望以其他许可证发布，必须先移除或重写 `top/artmoe/inao/` 下的全部代码。
+| 库 | 许可证 |
+|---|---|
+| protobuf-java 4.31.1 | BSD-3-Clause |
+| bsh (BeanShell) 3.0.0 | Apache-2.0 |
+| rhino 1.7.13 | MPL-2.0 |
+| luaj 3.0.1 | MIT |
+| dx (Android SDK Build Tools) | Apache-2.0 |

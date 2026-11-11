@@ -1,5 +1,9 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
+import com.cathelperawa.owo.app.core.Bg;
+import com.cathelperawa.owo.app.core.DependsOn;
+import com.cathelperawa.owo.app.core.SelfCheckResult;
 import android.R;
 import android.app.Activity;
 import android.content.Context;
@@ -46,9 +50,29 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-@HookItem(description = "长按进多选，批量撤回自己的消息", name = "多选撤回", order = 62, path = "去除限制/多选撤回")
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
+
+@DependsOn({"core.dex"})
+@HookItem(description = "长按进多选，批量撤回自己的消息", name = "多选撤回", order = 62, path = "去除限制/多选撤回",
+        priority = LoadPriority.DEFERRED)
 
 public class FeatureUnlockMultiRecall extends HookItemBase {
+
+    @Override
+    protected void check(SelfCheckResult.Checker c) {
+        c.cls("AIO 上下文", CLS_AIO_CTX);
+        c.cls("多选工具", CLS_MULTI_UTIL);
+        c.cls("消息项", CLS_MSG_ITEM);
+        c.cls("多选栏 VB", CLS_BAR_VB);
+        c.cls("气泡 VB", CLS_BUBBLE_VB);
+        c.cls("多选事件", "com.tencent.mobileqq.aio.event.MultiSelectEvent$SetSelectMode");
+    }
+
+    
+    private Class<?> cls(String name) {
+        return ClassResolver.find(this.cl, "multi:" + name, name);
+    }
+
     private static final String CLS_AIO_CTX = "com.tencent.aio.api.f.a";
     private static final String CLS_BAR_VB = "com.tencent.tim.aio.inputbar.TimMultiSelectBarVB";
     private static final String CLS_BUBBLE_VB = "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB";
@@ -58,9 +82,9 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
     private static final String CLS_VM_BASE = "com.tencent.c.a.b.b";
     private static final int ID_RECALL_BTN = 2131689676;
     public static final String K = "unlock_multirevoke";
-
+    
     private static final long RECALL_GAP_MS = 60;
-
+    
     private static final long RECALL_TAIL_MS = 260;
     private static volatile Object sAioCtx;
     private static volatile Object sBarVB;
@@ -69,6 +93,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
     private static final LinkedHashMap<Long, Object> MSG_ITEM_POOL = new LinkedHashMap<>();
     private static volatile boolean sRecalling = false;
 
+    
     public static final class RecallArrowDrawable extends Drawable {
         private static final float SRC = 72.0f;
         private static final float STROKE = 0.083333336f;
@@ -94,7 +119,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             this.size = i2;
         }
 
-        @Override
+        @Override 
         public void draw(Canvas canvas) {
             Rect bounds = getBounds();
             float width = bounds.width();
@@ -127,27 +152,27 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             canvas.drawPath(this.path, this.p);
         }
 
-        @Override
+        @Override 
         public int getIntrinsicHeight() {
             return this.size;
         }
 
-        @Override
+        @Override 
         public int getIntrinsicWidth() {
             return this.size;
         }
 
-        @Override
+        @Override 
         public int getOpacity() {
             return -3;
         }
 
-        @Override
+        @Override 
         public void setAlpha(int i) {
             this.p.setAlpha(i);
         }
 
-        @Override
+        @Override 
         public void setColorFilter(ColorFilter colorFilter) {
             this.p.setColorFilter(colorFilter);
         }
@@ -172,8 +197,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         layoutParams2.rightMargin = i3;
         frameLayout.setLayoutParams(layoutParams2);
         frameLayout.setBackgroundDrawable(rippleBg());
-        frameLayout.setOnClickListener(new View.OnClickListener() {
-            @Override
+        frameLayout.setOnClickListener(new View.OnClickListener() { 
+            @Override 
             public void onClick(View view) {
                 FeatureUnlockMultiRecall.this.exitMultiSelect();
                 FeatureUnlockMultiRecall.this.doBatchRecall(obj);
@@ -213,8 +238,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
     private boolean clearOnRemoveAll(ClassLoader classLoader, String str) {
         try {
             for (Constructor<?> constructor : Class.forName(str, false, classLoader).getDeclaredConstructors()) {
-                hookAfter(constructor, new HookApi.Action() {
-                    @Override
+                hookAfter(constructor, new HookApi.Action() { 
+                    @Override 
                     public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                         synchronized (FeatureUnlockMultiRecall.SELECTED_MSGS) {
                             FeatureUnlockMultiRecall.SELECTED_MSGS.clear();
@@ -311,6 +336,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         }
     }
 
+    
+    
     private void diag(ClassLoader classLoader) {
         boolean z;
         StringBuilder sb = new StringBuilder();
@@ -360,8 +387,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             writeNow("diag_multi.txt", "[点按钮] 已在撤回中，忽略");
         } else {
             sRecalling = true;
-            new Thread(new Runnable() {
-                @Override
+            Bg.run(new Runnable() { 
+                @Override 
                 public void run() {
                     List selectedMsgItemsByProbe;
                     Class<?> cls;
@@ -403,7 +430,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                         int i = 0;
                         int i2 = 0;
                         MsgStore.add("[多选撤回] 开始撤回 " + size + " 条");
-
+                        
                         ArrayList<Long> ids = new ArrayList<>();
                         Object contact = null;
                         long tStart = System.currentTimeMillis();
@@ -428,8 +455,10 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                                 HookLog.e("多选撤回：取 msgId 失败", th2);
                             }
                         }
+                        int rc = Integer.MIN_VALUE;
                         if (contact != null && !ids.isEmpty()) {
-                            if (FeatureUnlockMultiRecall.this.fireRecallBurst(contact, ids)) i = ids.size();
+                            rc = FeatureUnlockMultiRecall.this.fireRecallBurst(contact, ids);
+                            if (rc == 0) i = ids.size();
                             else i2 += ids.size();
                             try { Thread.sleep(FeatureUnlockMultiRecall.RECALL_TAIL_MS); } catch (Throwable ignore) {}
                         }
@@ -439,7 +468,10 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                         if (i2 == 0) {
                             FeatureUnlockMultiRecall.this.toastOnUi("撤回啦～" + i + " 条都收回来了喵！");
                         } else if (i == 0) {
-                            FeatureUnlockMultiRecall.this.toastOnUi("一条都没撤回来喵…（太久啦？）");
+                            
+                            String why = rc == -1 ? "调用没成功" : ("服务端拒绝 code=" + rc);
+                            FeatureUnlockMultiRecall.this.toastOnUi(
+                                    "一条都没撤回来喵…（" + why + "）");
                         } else {
                             FeatureUnlockMultiRecall.this.toastOnUi("撤回来 " + i + " 条，还有 " + i2 + " 条太久了撤不动喵…");
                         }
@@ -451,7 +483,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                         boolean unused2 = FeatureUnlockMultiRecall.sRecalling = false;
                     }
                 }
-            }, "cat-multi-recall").start();
+            }, "cat-multi-recall");
         }
     }
 
@@ -460,10 +492,10 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             final Activity activity = QQEnv.topActivity();
             if (activity instanceof Activity) {
                 Activity activity2 = activity;
-                activity.runOnUiThread(new Runnable() {
-                    @Override
+                activity.runOnUiThread(new Runnable() { 
+                    @Override 
                     public void run() {
-
+                        
                         if (FeatureUnlockMultiRecall.this.leaveMultiSelectOnly()) return;
                         try {
                             ((Activity) activity).onBackPressed();
@@ -518,27 +550,30 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             }
             send.setAccessible(true);
             int sent = 0;
-
+            
             try {
-                Class<?> a = Class.forName("com.tencent.mobileqq.aio.event.MultiSelectEvent$SetSelectMode", false, cl);
+                Class<?> a = ClassResolver.find(cl, "aio.event.setSelectMode",
+                        "com.tencent.mobileqq.aio.event.MultiSelectEvent$SetSelectMode");
                 Object ev = a.getConstructor(boolean.class).newInstance(Boolean.FALSE);
                 send.invoke(router, ev);
                 sent++;
             } catch (Throwable t) {
                 writeNow("diag_multi.txt", "[退出多选] SetSelectMode 失败 " + t);
             }
-
+            
             try {
-                Class<?> b = Class.forName("com.tencent.mobileqq.aio.event.AIOMsgListEvent$MultiSelectModeChangeEvent", false, cl);
+                Class<?> b = ClassResolver.find(cl, "aio.event.msModeChange",
+                        "com.tencent.mobileqq.aio.event.AIOMsgListEvent$MultiSelectModeChangeEvent");
                 Object ev = b.getConstructor(String.class, boolean.class).newInstance("MultiSelectBarVM", Boolean.FALSE);
                 send.invoke(router, ev);
                 sent++;
             } catch (Throwable t2) {
                 writeNow("diag_multi.txt", "[退出多选] ModeChangeEvent 失败 " + t2);
             }
-
+            
             try {
-                Class<?> c = Class.forName("com.tencent.mobileqq.aio.event.MsgForwardEvent$ExitMultiForward", false, cl);
+                Class<?> c = ClassResolver.find(cl, "aio.event.exitMultiForward",
+                        "com.tencent.mobileqq.aio.event.MsgForwardEvent$ExitMultiForward");
                 Object ev = null;
                 try {
                     Field f = c.getDeclaredField("d");
@@ -564,6 +599,10 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         }
     }
 
+    
+
+    
+    
     public Object getCtxFromVm(Object obj, Class<?> cls) {
         if (obj == null) {
             return null;
@@ -651,6 +690,9 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         }
     }
 
+    
+
+    
     private List<?> getSelectedMsgItems(Object obj) throws Throwable {
         Object obj2;
         Method method;
@@ -662,7 +704,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         String str3 = "null";
         try {
             int i2 = 0;
-            Class<?> cls = Class.forName(CLS_MULTI_UTIL, false, this.cl);
+            Class<?> cls = cls(CLS_MULTI_UTIL);
             try {
                 Field declaredField = cls.getDeclaredField("a");
                 declaredField.setAccessible(true);
@@ -731,7 +773,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                 }
             }
             try {
-                Class<?> cls2 = Class.forName("com.tencent.mobileqq.aio.event.MultiSelectEvent$GetSelectMsgList", false, this.cl);
+                Class<?> cls2 = ClassResolver.find(this.cl, "aio.event.getSelectMsgList",
+                    "com.tencent.mobileqq.aio.event.MultiSelectEvent$GetSelectMsgList");
                 if (cls2 != null) {
                     Object newInstance = cls2.newInstance();
                     try {
@@ -861,8 +904,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         ArrayList arrayList = new ArrayList();
         try {
             char c = 0;
-            Class<?> cls = Class.forName(CLS_MULTI_UTIL, false, this.cl);
-            Class<?> cls2 = Class.forName(CLS_MSG_ITEM, false, this.cl);
+            Class<?> cls = cls(CLS_MULTI_UTIL);
+            Class<?> cls2 = cls(CLS_MSG_ITEM);
             try {
                 Field declaredField = cls.getDeclaredField("a");
                 declaredField.setAccessible(true);
@@ -937,7 +980,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             return null;
         }
         try {
-            Class<?> cls2 = Class.forName("com.tencent.mvi.mvvm.BaseVM", false, this.cl);
+            Class<?> cls2 = ClassResolver.find(this.cl, "mvi.baseVM", "com.tencent.mvi.mvvm.BaseVM");
             if (cls2 != null && (findMethodByType = Refl.findMethodByType(obj.getClass(), cls2, new Class[0])) != null) {
                 findMethodByType.setAccessible(true);
                 Object invoke = findMethodByType.invoke(obj, new Object[0]);
@@ -966,7 +1009,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         Class<?> cls = null;
         Object scanForCtx;
         try {
-            cls = Class.forName(CLS_AIO_CTX, false, this.cl);
+            cls = cls(CLS_AIO_CTX);
         } catch (Throwable th) {
             writeNow("diag_multi.txt", "[退路异常] " + th);
         }
@@ -1037,8 +1080,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         }
         String name = findMethodByType2.getName();
         writeNow("diag_multi.txt", "[挂载] 按钮锚点 = " + findMethodByType2.getDeclaringClass().getName() + "." + name + "(" + findMethodByType2.getParameterTypes().length + "参) : " + findMethodByType2.getReturnType().getSimpleName());
-        hookAfter(findMethodByType2, new HookApi.Action() {
-            @Override
+        hookAfter(findMethodByType2, new HookApi.Action() { 
+            @Override 
             public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                 if (FeatureUnlockMultiRecall.this.on()) {
                     try {
@@ -1081,8 +1124,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         try {
             Class<?> findClass3 = HookApi.findClass(classLoader, "com.tencent.a0.a.c.a");
             if (findClass3 != null && (findMethodByType = Refl.findMethodByType(findClass, View.class, findClass3)) != null && findMethodByType != findMethodByType2) {
-                hookAfter(findMethodByType, new HookApi.Action() {
-                    @Override
+                hookAfter(findMethodByType, new HookApi.Action() { 
+                    @Override 
                     public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                         if (FeatureUnlockMultiRecall.this.on()) {
                             try {
@@ -1144,8 +1187,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             }
             if (findMethodByParams != null) {
                 String name = findMethodByParams.getName();
-                hookBefore(findMethodByParams, new HookApi.Action() {
-                    @Override
+                hookBefore(findMethodByParams, new HookApi.Action() { 
+                    @Override 
                     public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                         Object obj;
                         try {
@@ -1227,8 +1270,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             return false;
         }
         String name2 = method.getName();
-        hookAfter(method, new HookApi.Action() {
-            @Override
+        hookAfter(method, new HookApi.Action() { 
+            @Override 
             public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                 try {
                     Object field = Refl.field(methodHookParam.thisObject, "g");
@@ -1249,8 +1292,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         try {
             int i = 0;
             for (Constructor<?> constructor : Class.forName(str, false, classLoader).getDeclaredConstructors()) {
-                hookAfter(constructor, new HookApi.Action() {
-                    @Override
+                hookAfter(constructor, new HookApi.Action() { 
+                    @Override 
                     public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                         Object obj;
                         try {
@@ -1321,8 +1364,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                 writeNow("diag_multi.txt", "[① " + shortName(str) + ".onCreate] " + (findMethodByType == null ? "未找到" : findMethodByType.getName()));
                 if (findMethodByType != null) {
                     String name = findMethodByType.getName();
-                    hookAfter(findMethodByType, new HookApi.Action() {
-                        @Override
+                    hookAfter(findMethodByType, new HookApi.Action() { 
+                        @Override 
                         public void call(XC_MethodHook.MethodHookParam methodHookParam) {
                             try {
                                 if (methodHookParam.args == null || methodHookParam.args.length <= 0 || methodHookParam.args[0] == null) {
@@ -1346,7 +1389,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
 
     private boolean isItemSelected(Object obj, Object obj2, Object obj3) {
         try {
-            Class.forName(CLS_MSG_ITEM, false, this.cl);
+            cls(CLS_MSG_ITEM);
             for (Method method : obj.getClass().getDeclaredMethods()) {
                 Class<?>[] parameterTypes = method.getParameterTypes();
                 if (parameterTypes.length == 2 && method.getReturnType() == Boolean.TYPE && parameterTypes[0].isInstance(obj2) && parameterTypes[1].isInstance(obj3)) {
@@ -1504,6 +1547,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         return null;
     }
 
+    
     private Object recordOf(Object obj) {
         if (obj == null) return null;
         try {
@@ -1563,8 +1607,9 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         return s == null ? "" : s;
     }
 
-    private boolean fireRecallBurst(Object contact, ArrayList<Long> ids) {
-        if (contact == null || ids == null || ids.isEmpty()) return false;
+    
+    private int fireRecallBurst(Object contact, ArrayList<Long> ids) {
+        if (contact == null || ids == null || ids.isEmpty()) return -1;
         StringBuilder trace = new StringBuilder("[连发] ids=" + ids.size());
 
         try {
@@ -1577,12 +1622,14 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             }
             if (hit != null) {
                 hit.setAccessible(true);
-                hit.invoke(impl, contact, ids, null);
-                trace.append(" | ①impl.").append(hit.getName()).append(" 成功");
-                writeNow("diag_multi.txt", trace.toString());
-                return true;
+                int code = invokeWithCallback(impl, hit, contact, ids, trace, "①impl");
+                if (code != Integer.MIN_VALUE) {
+                    writeNow("diag_multi.txt", trace.toString());
+                    return code;
+                }
+            } else {
+                trace.append(" | ①无三参批量");
             }
-            trace.append(" | ①无三参批量");
         } catch (Throwable t) {
             trace.append(" | ①异常 ").append(t);
         }
@@ -1600,11 +1647,11 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                 }
                 if (hit != null) {
                     hit.setAccessible(true);
-                    if (hit.getParameterTypes().length == 2) hit.invoke(svc, contact, ids);
-                    else hit.invoke(svc, contact, ids, null);
-                    trace.append(" | ②kernel.").append(hit.getParameterTypes().length).append("参 成功");
-                    writeNow("diag_multi.txt", trace.toString());
-                    return true;
+                    int code = invokeWithCallback(svc, hit, contact, ids, trace, "②kernel");
+                    if (code != Integer.MIN_VALUE) {
+                        writeNow("diag_multi.txt", trace.toString());
+                        return code;
+                    }
                 }
             }
             trace.append(" | ②无批量");
@@ -1612,43 +1659,65 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             trace.append(" | ②异常 ").append(t);
         }
 
-        try {
-            Class<?> iface = Class.forName("com.tencent.qqnt.msg.api.IMsgService", false, cl);
-            Object api = null;
-            try {
-                Class<?> qroute = Class.forName("com.tencent.mobileqq.qroute.QRoute", false, cl);
-                for (Method m : qroute.getMethods()) {
-                    if ("api".equals(m.getName()) && m.getParameterTypes().length == 1
-                            && m.getParameterTypes()[0] == Class.class) {
-                        m.setAccessible(true);
-                        api = m.invoke(null, iface);
-                        break;
-                    }
-                }
-            } catch (Throwable ignore) {
-            }
-            if (api != null) {
-                Method one = null;
-                for (Method m : api.getClass().getMethods()) {
-                    if ("recallMsg".equals(m.getName())) {
-                        Class<?>[] p = m.getParameterTypes();
-                        if (p.length == 3 && p[1] == Long.TYPE) { one = m; break; }
-                    }
-                }
-                if (one != null) {
-                    one.setAccessible(true);
-                    for (Long id : ids) one.invoke(api, contact, id, null);
-                    trace.append(" | ③IMsgService 逐条 ").append(ids.size()).append(" 成功");
-                    writeNow("diag_multi.txt", trace.toString());
-                    return true;
-                }
-            }
-            trace.append(" | ③不可用");
-        } catch (Throwable t) {
-            trace.append(" | ③异常 ").append(t);
-        }
         writeNow("diag_multi.txt", trace.toString());
-        return false;
+        return -1;
+    }
+
+    private int invokeWithCallback(Object target, Method m, Object contact,
+                                   ArrayList<Long> ids, StringBuilder trace, String tag) {
+        try {
+            Class<?>[] ps = m.getParameterTypes();
+            
+            if (ps.length < 3) {
+                if (ps.length == 2) m.invoke(target, contact, ids);
+                else return Integer.MIN_VALUE;
+                trace.append(" | ").append(tag).append(" 无回调，按已提交");
+                return Integer.MIN_VALUE;
+            }
+
+            final int[] code = new int[]{Integer.MIN_VALUE};
+            final String[] err = new String[]{""};
+            final java.util.concurrent.CountDownLatch latch =
+                    new java.util.concurrent.CountDownLatch(1);
+            Class<?> cbCls = ps[2];
+            Object cb = null;
+            try {
+                cb = java.lang.reflect.Proxy.newProxyInstance(
+                        cl, new Class<?>[]{cbCls}, new java.lang.reflect.InvocationHandler() {
+                            @Override public Object invoke(Object p, Method mm, Object[] a) {
+                                String n = mm.getName();
+                                try {
+                                    if (a != null && a.length >= 1 && a[0] instanceof Integer) {
+                                        code[0] = (Integer) a[0];
+                                        if (a.length >= 2 && a[1] != null) err[0] = String.valueOf(a[1]);
+                                        latch.countDown();
+                                    } else if ("onResult".equals(n) && a != null) {
+                                        latch.countDown();
+                                    }
+                                } catch (Throwable ignore) {
+                                }
+                                return null;
+                            }
+                        });
+            } catch (Throwable t) {
+                trace.append(" | ").append(tag).append(" 回调接口建不出来 ").append(t);
+            }
+
+            m.invoke(target, contact, ids, cb);
+            if (cb != null) {
+                latch.await(6000, java.util.concurrent.TimeUnit.MILLISECONDS);
+            }
+            trace.append(" | ").append(tag).append(" code=").append(code[0])
+                    .append(" err=").append(err[0]);
+            if (code[0] == Integer.MIN_VALUE) {
+                trace.append("（等不到回执）");
+                return Integer.MIN_VALUE;
+            }
+            return code[0];
+        } catch (Throwable t) {
+            trace.append(" | ").append(tag).append(" 调用异常 ").append(t);
+            return Integer.MIN_VALUE;
+        }
     }
 
     public boolean recallOne(Object obj) throws Throwable {        if (obj == null) {
@@ -1733,6 +1802,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         return lastIndexOf < 0 ? str : str.substring(lastIndexOf + 1);
     }
 
+    
     private Object toMsgItem(Object obj) {
         Class<?> cls = null;
         int i;
@@ -1740,7 +1810,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             return null;
         }
         try {
-            cls = Class.forName(CLS_MSG_ITEM, false, this.cl);
+            cls = cls(CLS_MSG_ITEM);
         } catch (Throwable th) {
             writeNow("diag_multi.txt", "[转AIOMsgItem异常] " + th);
         }
@@ -1795,8 +1865,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
 
     public void toastOnUi(final String str) {
         try {
-            QQUtils.runOnUi(new Runnable() {
-                @Override
+            QQUtils.runOnUi(new Runnable() { 
+                @Override 
                 public void run() {
                     try {
                         UiKit.catToast(FeatureUnlockMultiRecall.this.ctx, str);
@@ -1822,7 +1892,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             return false;
         }
         try {
-            Class<?> cls2 = Class.forName("com.tencent.mobileqq.aio.input.multiselect.c$c", false, this.cl);
+            Class<?> cls2 = ClassResolver.find(this.cl, "aio.multiselect.c$c",
+                    "com.tencent.mobileqq.aio.input.multiselect.c$c");
             int i = 1;
             try {
                 Field declaredField = cls2.getDeclaredField("d");
@@ -1873,8 +1944,8 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
             method.setAccessible(true);
             final Throwable[] thArr = new Throwable[1];
             final Method method3 = method;
-            QQUtils.runOnUi(new Runnable() {
-                @Override
+            QQUtils.runOnUi(new Runnable() { 
+                @Override 
                 public void run() {
                     try {
                         method3.invoke(vmFromVb, obj2);
@@ -1946,7 +2017,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         try {
             Object obj = null;
             Object vmFromVb = getVmFromVb(sBarVB, null);
-            Object ctxFromVm = (vmFromVb == null || (cls = Class.forName(CLS_AIO_CTX, false, this.cl)) == null) ? null : getCtxFromVm(vmFromVb, cls);
+            Object ctxFromVm = (vmFromVb == null || (cls = cls(CLS_AIO_CTX)) == null) ? null : getCtxFromVm(vmFromVb, cls);
             if (ctxFromVm == null) {
                 ctxFromVm = grabAioCtxNow(sBarVB);
             }
@@ -1954,7 +2025,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
                 return true;
             }
             try {
-                Field declaredField = Class.forName(CLS_MULTI_UTIL, false, this.cl).getDeclaredField("a");
+                Field declaredField = cls(CLS_MULTI_UTIL).getDeclaredField("a");
                 declaredField.setAccessible(true);
                 obj = declaredField.get(null);
             } catch (Throwable th) {
@@ -1987,11 +2058,11 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         }
     }
 
-    @Override
+    @Override 
     public void entry(ClassLoader classLoader) {
         hint("进入多选模式时");
-        noInstrument();
-
+        noInstrument();          
+        
         try {
             File f = new File(ctx.getFilesDir(), "diag_multi.txt");
             if (f.exists()) f.delete();
@@ -2013,7 +2084,7 @@ public class FeatureUnlockMultiRecall extends HookItemBase {
         MsgStore.add("[多选撤回] 安装完成 " + i + "/2");
     }
 
-    @Override
+    @Override 
     public String switchKey() {
         return K;
     }

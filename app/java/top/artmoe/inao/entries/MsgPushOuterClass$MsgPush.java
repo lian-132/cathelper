@@ -113,7 +113,7 @@ public final class MsgPushOuterClass$MsgPush extends com.google.protobuf.Generat
         }
     }
 
-    @Override
+    @Override 
     public final java.lang.Object dynamicMethod(com.google.protobuf.GeneratedMessageLite.MethodToInvoke methodToInvoke, java.lang.Object obj, java.lang.Object obj2) {
         int i = top.artmoe.inao.entries.MsgPushOuterClass$1.$SwitchMap$com$google$protobuf$GeneratedMessageLite$MethodToInvoke[methodToInvoke.ordinal()];
         switch (i) {

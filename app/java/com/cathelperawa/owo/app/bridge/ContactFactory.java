@@ -1,5 +1,6 @@
 package com.cathelperawa.owo.app.bridge;
 
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import com.cathelperawa.owo.app.core.HookLog;
 
 import java.lang.reflect.Constructor;
@@ -12,12 +13,9 @@ public final class ContactFactory {
 
     public static Object make(int chatType, String peerUid, String guildId) {
         ClassLoader cl = QQEnv.classLoader();
-        Class<?> c = XposedHelpers.findClassIfExists(
-                "com.tencent.qqnt.kernelpublic.nativeinterface.Contact", cl);
-        if (c == null) {
-            c = XposedHelpers.findClassIfExists(
-                    "com.tencent.qqnt.kernel.nativeinterface.Contact", cl);
-        }
+        Class<?> c = ClassResolver.find(cl, "qqnt.contact",
+                "com.tencent.qqnt.kernelpublic.nativeinterface.Contact",
+                "com.tencent.qqnt.kernel.nativeinterface.Contact");
         if (c == null) { HookLog.w("未找到 Contact 类"); return null; }
         for (Constructor<?> ct : c.getDeclaredConstructors()) {
             Class<?>[] ps = ct.getParameterTypes();

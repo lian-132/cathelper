@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.api;
 
 import android.content.Context;
+import com.cathelperawa.owo.app.core.Bg;
 
 import com.cathelperawa.owo.app.bridge.QQEnv;
 import com.cathelperawa.owo.app.util.CatLog;
@@ -22,11 +23,11 @@ public final class UtilApi {
     }
 
     public static void runAsync(final Runnable r) {
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 try { r.run(); } catch (Throwable t) { CatLog.e("runAsync 异常", t); }
             }
-        }, "cathelper-task").start();
+        }, "cathelper-task");
     }
 
     public static void postDelayed(Runnable r, long delayMs) {

@@ -9,12 +9,12 @@ public final class CatElement {
         VIDEO("video"),
         FILE("file"),
         FACE("face"),
-        CARD("ark"),
-        MARKET_FACE("market"),
-        GIFT("gift"),
-        REPLY("reply"),
-        GRAY("gray"),
-        FORWARD("fwd"),
+        CARD("ark"),            
+        MARKET_FACE("market"),  
+        GIFT("gift"),           
+        REPLY("reply"),         
+        GRAY("gray"),           
+        FORWARD("fwd"),         
         LOCATION("loc"),
         UNKNOWN("unknown");
 
@@ -33,6 +33,8 @@ public final class CatElement {
         }
     }
 
+    
+
     private final Kind kind;
     private final Object raw;
 
@@ -41,6 +43,9 @@ public final class CatElement {
         this.raw = raw;
     }
 
+    
+
+    
     public static CatElement of(Object raw) {
         if (raw == null) return new CatElement(Kind.UNKNOWN, null);
         return new CatElement(detectKind(raw), raw);
@@ -50,6 +55,9 @@ public final class CatElement {
         return new CatElement(kind, raw);
     }
 
+    
+
+    
     public Kind kind() {
         return kind;
     }
@@ -71,7 +79,7 @@ public final class CatElement {
             case FILE:
             case FACE:
             case CARD:
-            case GIFT:
+            case GIFT:      
             case REPLY:
                 return true;
             default:
@@ -79,6 +87,9 @@ public final class CatElement {
         }
     }
 
+    
+
+    
     private static Kind detectKind(Object el) {
         try {
             if (com.cathelperawa.owo.app.util.Refl.field(el, "grayTipElement") != null) return Kind.GRAY;
@@ -94,7 +105,7 @@ public final class CatElement {
             if (com.cathelperawa.owo.app.util.Refl.field(el, "marketFaceElement") != null) return Kind.MARKET_FACE;
             if (com.cathelperawa.owo.app.util.Refl.field(el, "shareLocationElement") != null) return Kind.LOCATION;
             if (com.cathelperawa.owo.app.util.Refl.field(el, "textGiftElement") != null) return Kind.GIFT;
-
+            
             int et = com.cathelperawa.owo.app.util.Refl.i32(
                     com.cathelperawa.owo.app.util.Refl.field(el, "elementType"), -1);
             switch (et) {
@@ -115,6 +126,8 @@ public final class CatElement {
         }
         return Kind.UNKNOWN;
     }
+
+    
 
     @Override
     public boolean equals(Object o) {

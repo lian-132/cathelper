@@ -17,7 +17,30 @@ public final class MsgApi {
 
     private MsgApi() {}
 
+    
+
+    
+    private static String applySendPoint(String text, String where) {
+        try {
+            if (!com.cathelperawa.owo.app.script.PatchPoint.has("host.send.text")) return text;
+            com.cathelperawa.owo.app.script.PatchPoint.PatchCtx pc =
+                    new com.cathelperawa.owo.app.script.PatchPoint.PatchCtx(
+                            "host.send.text", text, where);
+            com.cathelperawa.owo.app.script.PatchPoint.emit(pc);
+            if (pc.cancelled()) {
+                dbgPatch("CANCEL in=[" + text + "] where=" + where);
+                return null;
+            }
+            dbgPatch("IN=[" + text + "] OUT=[" + pc.text() + "] where=" + where);
+            return pc.text();
+        } catch (Throwable t) {
+            return text;
+        }
+    }
+
     public static boolean sendText(int chatType, String peerUid, String text) {
+        text = applySendPoint(text, (chatType == 2 ? "group:" : "friend:") + peerUid);
+        if (text == null) return false;
         return sendElements(chatType, peerUid,
                 java.util.Collections.singletonList(ElementFactory.text(text)));
     }
@@ -32,9 +55,23 @@ public final class MsgApi {
                 java.util.Collections.singletonList(ElementFactory.pic(path)));
     }
 
+    public static boolean sendPicWithApp(int chatType, String peerUid, String path,
+                                         long appID, int appType) {
+        Object contact = ContactFactory.make(chatType, peerUid, "");
+        if (contact == null) { CatLog.w("sendPicWithApp: Contact 构造失败"); return false; }
+        return com.cathelperawa.owo.app.bridge.MsgSender.sendWithAttrs(contact,
+                java.util.Collections.singletonList(ElementFactory.pic(path)),
+                com.cathelperawa.owo.app.bridge.MsgSender.buildAttrsWithQQConnect(appID, appType));
+    }
+
     public static boolean sendPtt(int chatType, String peerUid, String path) {
         return sendElements(chatType, peerUid,
                 java.util.Collections.singletonList(ElementFactory.ptt(path)));
+    }
+
+    public static boolean sendPtt(int chatType, String peerUid, String path, int durationMs) {
+        return sendElements(chatType, peerUid,
+                java.util.Collections.singletonList(ElementFactory.ptt(path, durationMs)));
     }
 
     public static boolean sendElements(int chatType, String peerUid, List<Object> elements) {
@@ -43,6 +80,9 @@ public final class MsgApi {
         return MsgSender.send(contact, elements);
     }
 
+    
+
+    
     public static com.cathelperawa.owo.app.model.CatResult sendElementsResult(
             int chatType, String peerUid, List<Object> elements) {
         if (elements == null || elements.isEmpty()) {
@@ -92,6 +132,9 @@ public final class MsgApi {
                 java.util.Collections.singletonList(ElementFactory.ark(arkJson)));
     }
 
+    
+
+    
     public static void extract(Object recordOrMsgItem) {
         Object record = CatApi.unwrapRecord(recordOrMsgItem);
         if (record == null) { CatLog.e("extract: 无法取到 MsgRecord", null); return; }
@@ -147,12 +190,17 @@ public final class MsgApi {
         return record == null ? 0 : Refl.lng(Refl.field(record, "msgSeq"), 0);
     }
 
+    
+
     public static int capturedCount()                    { return MsgStore.all().size(); }
     public static List<String> capturedAll()             { return MsgStore.all(); }
     public static void capturedClear()                   { MsgStore.clear(); }
     public static java.util.Map<String, String> capturedPeers() { return MsgStore.peers(); }
     public static boolean isPeerAllowed(String uid)      { return MsgStore.allows(uid); }
 
+    
+
+    
     public static boolean recall(Object recordOrMsgItem) {
         Object r = CatApi.unwrapRecord(recordOrMsgItem);
         if (r == null) return false;
@@ -215,7 +263,10 @@ public final class MsgApi {
         return NtMsgApi.forward(ids, src, dsts);
     }
 
+    
     public static boolean sendReply(int chatType, String peerUid, long replyMsgId, String text) {
+        text = applySendPoint(text, (chatType == 2 ? "group:" : "friend:") + peerUid);
+        if (text == null) return false;
         List<Object> els = new java.util.ArrayList<Object>();
         Object rp = ElementFactory.reply(replyMsgId);
         if (rp != null) els.add(rp);
@@ -317,6 +368,22 @@ public final class MsgApi {
         } catch (Throwable t) {
             CatLog.e("sendEmojiLike 失败", t);
             return false;
+        }
+    }
+
+    private static void dbgPatch(String s) {
+        try {
+            java.io.File d = com.cathelperawa.owo.app.core.DataDir.global();
+            if (d == null) return;
+            if (!d.exists()) d.mkdirs();
+            java.io.File f = new java.io.File(d, "patch_debug.txt");
+            if (f.length() > 200 * 1024) f.delete();
+            java.io.FileOutputStream fo = new java.io.FileOutputStream(f, true);
+            fo.write((new java.text.SimpleDateFormat("HH:mm:ss")
+                    .format(new java.util.Date()) + " " + s + "\n").getBytes("UTF-8"));
+            fo.flush();
+            fo.close();
+        } catch (Throwable ignore) {
         }
     }
 }

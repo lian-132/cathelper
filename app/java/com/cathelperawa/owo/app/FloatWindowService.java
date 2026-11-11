@@ -74,7 +74,7 @@ public class FloatWindowService extends Service {
 
         TextView tv = new TextView(this);
         tv.setText("");
-
+        
         String custom = getSharedPreferences(AppConfig.PREF, MODE_PRIVATE)
                 .getString("customFloatIcon", "");
         android.graphics.drawable.Drawable d = null;

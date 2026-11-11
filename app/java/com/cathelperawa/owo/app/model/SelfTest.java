@@ -72,10 +72,10 @@ public final class SelfTest {
         check("hostMissing 的说明含定位信息",
                 boo.note() != null && boo.note().contains("MsgService.sendMsg"));
 
-        CatResult nr = CatResult.notReady("TimNet");
+        CatResult nr = CatResult.notReady("TimHb");
         check("notReady 分类正确", nr.fail() == CatResult.Fail.NOT_READY);
 
-        CatResult to = CatResult.timeout("回包超时");
+        CatResult to = CatResult.timeout("红包回包");
         check("timeout 分类正确", to.fail() == CatResult.Fail.TIMEOUT);
 
         CatResult rej = CatResult.rejected("服务端说不行");

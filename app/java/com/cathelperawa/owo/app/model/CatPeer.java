@@ -13,6 +13,9 @@ public abstract class CatPeer {
 
     public abstract String uin();
 
+    
+
+    
     public static CatPeer group(String groupUin) {
         if (isBlank(groupUin)) throw new IllegalArgumentException("群号不能为空");
         return new GroupPeer(groupUin);
@@ -38,6 +41,8 @@ public abstract class CatPeer {
         }
     }
 
+    
+
     private volatile String cachedNick;
     private volatile boolean nickLoaded;
 
@@ -48,7 +53,7 @@ public abstract class CatPeer {
             String n = null;
             try {
                 if (chatType() == ChatType.GROUP) {
-                    n = null;
+                    n = null;   
                 } else {
                     n = ContactApi.getBuddyNameByUid(uid());
                     if (isBlank(n)) n = ContactApi.getBuddyName(uin());
@@ -72,9 +77,14 @@ public abstract class CatPeer {
         }
     }
 
+    
+
+    
     public Object raw() {
         return ContactFactory.make(chatType().code, uid(), null);
     }
+
+    
 
     @Override
     public boolean equals(Object o) {
@@ -95,6 +105,9 @@ public abstract class CatPeer {
         return chatType().name() + "(" + uid() + ")";
     }
 
+    
+
+    
     private static final class GroupPeer extends CatPeer {
         private final String g;
         GroupPeer(String g) { this.g = g; }
@@ -104,7 +117,7 @@ public abstract class CatPeer {
     }
 
     private static final class FriendPeer extends CatPeer {
-        private final String uid;
+        private final String uid;   
         private final String uin;
 
         FriendPeer(String uinOrUid) {
@@ -125,7 +138,7 @@ public abstract class CatPeer {
                 } catch (Throwable t) {
                     com.cathelperawa.owo.app.core.HookLog.w("[CatPeer] uidFromUin 失败: " + t);
                 }
-
+                
                 this.uid = (u == null || u.isEmpty()) ? uinOrUid : u;
             }
         }

@@ -9,6 +9,7 @@ public final class ConfigApi {
 
     private ConfigApi() {}
 
+    
     public static boolean isCaptureEnabled() { return getBool("hook_capture", true); }
 
     public static void setCaptureEnabled(boolean on) { setBool("hook_capture", on); }
@@ -25,6 +26,7 @@ public final class ConfigApi {
 
     public static void setFeatureEnabled(String key, boolean on) { setBool(key, on); }
 
+    
     public static String get(String key, String def) {
         Context ctx = QQEnv.appContext();
         return ctx == null ? def : HookConfig.get(ctx, key, def);

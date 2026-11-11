@@ -1,6 +1,7 @@
 package com.cathelperawa.owo.app.ui;
 
 import android.app.Activity;
+import com.cathelperawa.owo.app.core.Bg;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -30,7 +31,7 @@ public final class ConfigPage extends Page {
     private static final int C_SUB = 0xFF6E8098;
     private static final int C_HINT = 0xFF8E9DAF;
     private static final int C_BLUE = 0xFF5B8DEF;
-    private static final int C_GREEN = 0xFF4CAF7D;
+    private static final int C_GREEN = 0xFF4CAF7D;    
 
     private LinearLayout contentBox;
     private TextView subtitle;
@@ -59,6 +60,8 @@ public final class ConfigPage extends Page {
         return out[0];
     }
 
+    
+
     private void render() {
         if (contentBox == null) return;
         while (contentBox.getChildCount() > 1) {
@@ -70,6 +73,8 @@ public final class ConfigPage extends Page {
         contentBox.addView(importCard(), matchWrap(dp(12)));
         contentBox.addView(historyCard(), matchWrap(0));
     }
+
+    
 
     private View exportCard() {
         LinearLayout card = card();
@@ -93,7 +98,7 @@ public final class ConfigPage extends Page {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(12), dp(10), dp(12), dp(10));
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x4DEEF3FB);
+        bg.setColor(0x4DEEF3FB);   
         bg.setCornerRadius(dp(10));
         box.setBackgroundDrawable(bg);
         box.addView(text("保存位置", 10.5f, C_HINT, false, dp(3)));
@@ -105,6 +110,8 @@ public final class ConfigPage extends Page {
         card.addView(box, matchWrap(0));
         return card;
     }
+
+    
 
     private View importCard() {
         LinearLayout card = card();
@@ -145,7 +152,7 @@ public final class ConfigPage extends Page {
 
     private void doImportText(final String text) {
         if (subtitle != null) subtitle.setText("正在导入，稍等…");
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 final ConfigBank.Result r = ConfigBank.importText(ctx, text);
                 ui(new Runnable() {
@@ -157,8 +164,10 @@ public final class ConfigPage extends Page {
                     }
                 });
             }
-        }, "cfg-import-text").start();
+        }, "cfg-import-text");
     }
+
+    
 
     private View historyCard() {
         LinearLayout card = card();
@@ -232,9 +241,11 @@ public final class ConfigPage extends Page {
         return name;
     }
 
+    
+
     private void doExport() {
         if (subtitle != null) subtitle.setText("正在导出，稍等…");
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 final ConfigBank.Result r = ConfigBank.export(ctx);
                 ui(new Runnable() {
@@ -248,7 +259,7 @@ public final class ConfigPage extends Page {
                     }
                 });
             }
-        }, "cfg-export").start();
+        }, "cfg-export");
     }
 
     private File newestBackup() {
@@ -317,7 +328,7 @@ public final class ConfigPage extends Page {
 
     private void doImportFile(final File f) {
         if (subtitle != null) subtitle.setText("正在导入，稍等…");
-        new Thread(new Runnable() {
+        Bg.run(new Runnable() {
             @Override public void run() {
                 final ConfigBank.Result r = ConfigBank.importFrom(ctx, f);
                 ui(new Runnable() {
@@ -329,7 +340,7 @@ public final class ConfigPage extends Page {
                     }
                 });
             }
-        }, "cfg-import").start();
+        }, "cfg-import");
     }
 
     public void onPicked(Uri uri) {
@@ -363,11 +374,14 @@ public final class ConfigPage extends Page {
         return out;
     }
 
+    
+
+    
     private LinearLayout card() {
         LinearLayout l = new LinearLayout(ctx);
         l.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(0x99FFFFFF);
+        g.setColor(0x99FFFFFF);   
         g.setCornerRadius(dp(20));
         g.setStroke(dp(1), 0x88FFFFFF);
         l.setBackgroundDrawable(g);
@@ -396,7 +410,7 @@ public final class ConfigPage extends Page {
         badge.setTextColor(0xFFFFFFFF);
         badge.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xCC9E93DD);
+        bg.setColor(0xCC9E93DD);   
         bg.setCornerRadius(dp(7));
         badge.setBackgroundDrawable(bg);
         l.addView(badge, new LinearLayout.LayoutParams(dp(20), dp(20)));
@@ -420,13 +434,15 @@ public final class ConfigPage extends Page {
         GradientDrawable g = new GradientDrawable();
         g.setCornerRadius(dp(12));
 
+        
+        
         int base = color & 0x00FFFFFF;
         if (solid) {
-            g.setColor(base | 0x2E000000);
-            g.setStroke(dp(1), base | 0x8C000000);
+            g.setColor(base | 0x2E000000);        
+            g.setStroke(dp(1), base | 0x8C000000); 
         } else {
-            g.setColor(base | 0x14000000);
-            g.setStroke(dp(1), base | 0x73000000);
+            g.setColor(base | 0x14000000);        
+            g.setStroke(dp(1), base | 0x73000000); 
         }
         t.setTextColor(color);
         t.setBackgroundDrawable(g);

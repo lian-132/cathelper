@@ -16,7 +16,7 @@ public class LogProvider extends ContentProvider {
     public static final Uri URI = Uri.parse("content://" + AUTHORITY);
     public static final String FILE_NAME = "module_log.txt";
     public static final String MSG_FILE = "module_msg.txt";
-    private static final long MAX_SIZE = 128 * 1024;
+    private static final long MAX_SIZE = 128 * 1024;   
 
     private static final String[] ALLOWED_PKGS = {
             "com.tencent.tim",
@@ -33,7 +33,7 @@ public class LogProvider extends ContentProvider {
             android.content.Context ctx = getContext();
             if (ctx == null) return false;
             int callingUid = android.os.Binder.getCallingUid();
-
+            
             if (callingUid == android.os.Process.myUid()) return true;
 
             android.content.pm.PackageManager pm = ctx.getPackageManager();
@@ -42,10 +42,10 @@ public class LogProvider extends ContentProvider {
                     int uid = pm.getPackageUid(pkg, 0);
                     if (uid == callingUid) return true;
                 } catch (Throwable ignore) {
-
+                    
                 }
             }
-
+            
             String callingPkg = null;
             try {
                 String[] pkgs = pm.getPackagesForUid(callingUid);
@@ -57,7 +57,7 @@ public class LogProvider extends ContentProvider {
                     if (pkg.equals(callingPkg)) return true;
                 }
             }
-
+            
             try {
                 String cp = getCallingPackage();
                 if (cp != null) {
@@ -79,7 +79,7 @@ public class LogProvider extends ContentProvider {
 
     @Override
     public Uri insert(Uri uri, ContentValues values) {
-
+        
         if (!isAllowedCaller()) return null;
         try {
             android.content.Context ctx = getContext();
@@ -90,7 +90,7 @@ public class LogProvider extends ContentProvider {
 
             File f = new File(ctx.getFilesDir(),
                     "MSG".equals(tag) ? MSG_FILE : FILE_NAME);
-
+            
             if (f.exists() && f.length() > MAX_SIZE) {
                 try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
                     long keep = raf.length() / 2;
@@ -121,7 +121,7 @@ public class LogProvider extends ContentProvider {
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-
+        
         if (!isAllowedCaller()) return 0;
         try {
             File f = logFile(getContext());

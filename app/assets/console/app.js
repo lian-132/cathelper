@@ -1,4 +1,4 @@
-
+/* 猫娘助手 · 控制台原型交互 */
 (function () {
   'use strict';
 
@@ -13,7 +13,7 @@
     revoke: ['防撤回', 'revokeState', ['已关闭', '已开启']]
   };
 
-  
+  /* ---------- 波纹 + 按压 ---------- */
   document.addEventListener('pointerdown', function (e) {
     var el = e.target.closest('.press, .icon-cell');
     if (!el) return;
@@ -28,10 +28,10 @@
     setTimeout(function () { s.remove(); }, 560);
   });
 
-  
+  /* ---------- JS↔Native 桥 ---------- */
   var bridge = window.nativeBridge || null;
 
-  
+  // 页面加载完从 Native 拿状态恢复开关
   if (bridge) {
     try {
       var saved = JSON.parse(bridge.getStates());
@@ -51,10 +51,10 @@
         }
       });
       refreshHero();
-    } catch (e) {  }
+    } catch (e) { /* 桥不可用就当纯原型看 */ }
   }
 
-  
+  /* 点击切换（改造：接桥落库） */
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-key]');
     if (!el) return;
@@ -75,12 +75,12 @@
     if (st) st.textContent = state[k] ? '开' : '关';
 
     refreshHero();
-    
+    // 未接线的格子只提示不出功能
     if (k.charAt(0) === 'g' && !state[k]) return;
     if (k.charAt(0) === 'g') toast('「' + el.querySelector('b').textContent + '」还没接线，敬请期待~');
   });
 
-  
+  /* ---------- 顶部大卡联动 ---------- */
   function refreshHero() {
     var anyOn = state.master || state.cat || state.auto;
     var tag = document.getElementById('statusTag');
@@ -96,14 +96,14 @@
     if (sub) sub.textContent = anyOn ? 'TIM 增强 · 已生效' : 'TIM 增强 · 控制台';
   }
 
-  
+  /* ---------- 刷新按钮 ---------- */
   var btn = document.getElementById('btnRefresh');
   if (btn) btn.addEventListener('click', function () {
     toast('状态已刷新');
     refreshHero();
   });
 
-  
+  /* ---------- 大卡轻微跟随手指（3D 倾斜） ---------- */
   var hero = document.querySelector('.hero');
   if (hero) {
     hero.addEventListener('pointermove', function (e) {
@@ -118,7 +118,7 @@
     });
   }
 
-  
+  /* ---------- Toast ---------- */
   var toastEl = document.getElementById('toast');
   var toastTimer = null;
   function toast(msg) {
@@ -129,7 +129,7 @@
     toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 1600);
   }
 
-  
+  /* ---------- 进入动画 ---------- */
   var app = document.getElementById('app');
   if (app) { app.classList.add('screen-in'); }
 

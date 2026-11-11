@@ -14,14 +14,15 @@ public final class PanelApi {
 
     public interface OnOk { void run(); }
 
+    
     public static final int C_TITLE = CatPanel.C_TITLE;
-
+    
     public static final int C_BODY = CatPanel.C_BODY;
-
+    
     public static final int C_HINT = CatPanel.C_HINT;
-
+    
     public static final int C_PINK = CatPanel.C_PINK;
-
+    
     public static final int C_BLUE = CatPanel.C_BLUE;
 
     public static void show(Context ctx, String badge, String title, String sub,

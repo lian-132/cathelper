@@ -36,7 +36,7 @@ public final class NtMsgApi {
             if (recall == null) return false;
 
             Class<?>[] ps = recall.getParameterTypes();
-            if (ps.length < 3) {
+            if (ps.length < 3) {                     
                 recall.setAccessible(true);
                 recall.invoke(s, contact, ids);
                 return true;
@@ -51,7 +51,7 @@ public final class NtMsgApi {
                         @Override public Object invoke(Object proxy, Method m, Object[] a) {
                             try {
                                 if ("onResult".equals(m.getName()) && a != null && a.length >= 1) {
-
+                                    
                                     Object code = a[0];
                                     if (code instanceof Number) {
                                         int c = ((Number) code).intValue();
@@ -71,7 +71,7 @@ public final class NtMsgApi {
 
             recall.setAccessible(true);
             recall.invoke(s, contact, ids, cb);
-
+            
             long deadline = System.currentTimeMillis() + timeoutMs;
             while (!done[0] && System.currentTimeMillis() < deadline) {
                 Thread.sleep(20);
@@ -139,7 +139,7 @@ public final class NtMsgApi {
                 }
             }
             if (target == null) return null;
-
+            
             StringBuilder sig = new StringBuilder("[getMsgsByMsgId 签名] ");
             for (Class<?> pt : target.getParameterTypes()) sig.append(pt.getName()).append(" | ");
             HookLog.i(sig.toString());
@@ -168,7 +168,7 @@ public final class NtMsgApi {
             target.setAccessible(true);
             target.invoke(s, contact, ids, cb);
             for (int i = 0; i < 100 && holder[0] == null; i++) Thread.sleep(10);
-
+            
             Object h = holder[0];
             if (h instanceof java.util.List) {
                 java.util.List<?> l = (java.util.List<?>) h;

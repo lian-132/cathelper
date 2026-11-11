@@ -1,5 +1,8 @@
 package com.cathelperawa.owo.app.feature;
 
+import com.cathelperawa.owo.app.core.LoadPriority;
+import com.cathelperawa.owo.app.core.Bg;
+import com.cathelperawa.owo.app.core.dex.ClassResolver;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -37,19 +40,24 @@ import java.util.Map;
 import de.robv.android.xposed.XC_MethodHook;
 
 @HookItem(name = "聊天小工具", path = "聊天与消息/聊天小工具",
-        description = "改本地文本 · 闪照破解 · 自定义点数 · 表情看图", order = 45)
+        description = "改本地文本 · 闪照破解 · 自定义点数 · 表情看图", order = 45, hosts = {"tim", "qq"})
 public class FeatureChatTools extends HookItemBase {
+
+    
 
     public static final String K_EDIT  = "chat_edittext";
     public static final String K_FLASH = "chat_flashpic";
     public static final String K_DICE  = "chat_customdice";
     public static final String K_EMOJI = "chat_emojiimg";
-
+    
     public static final String K_NOAT  = "chat_noat";
     public static final String K_SHOWAT = "chat_showat";
     public static final String K_MIX   = "chat_mixsend";
 
+    public boolean mainProcessOnly() { return true; }
+
     @Override
+
     public String switchKey() { return K_EDIT; }
 
     public static boolean editOn(Context c)  { return HookConfig.getBoolean(c, K_EDIT,  true); }
@@ -66,22 +74,25 @@ public class FeatureChatTools extends HookItemBase {
     }
 
     private static final boolean DIAG = true;
-
+    
     private static final boolean DIAG_VERBOSE = false;
 
+    
+
+    
     private static final String CLS_MSG_ITEM = "com.tencent.mobileqq.aio.msg.AIOMsgItem";
 
     private static final int SUB_FLASH = 8194;
     private static final int FLASH_BIT = 8192;
 
     private static final String FLASH_MARK = "cat_flash";
-
+    
     private static final String FLASH_TIP = "这是闪照喵~";
-
+    
     private static final String FLASH_TIP_TAG = "cat_flash_tip";
-
+    
     private static final String FLASH_WRAP_TAG = "cat_flash_hook";
-
+    
     private static final String CLS_BUBBLE_VB =
             "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB";
 
@@ -91,7 +102,15 @@ public class FeatureChatTools extends HookItemBase {
             new LinkedHashMap<Long, Map<Integer, String>>();
 
     private static final String T_EDIT = "文本修改";
+    
+    private static final String T_SKIN = "识别卡片";
+    
+    private static final String T_MEDIA = "存素材";
+    
+    private static final String T_VOICE = "存语音";
     private static Map<Object, Object[]> MENU_ITEMS;
+
+    
 
     @Override
     public void entry(ClassLoader cl) {
@@ -99,14 +118,19 @@ public class FeatureChatTools extends HookItemBase {
         hint("长按消息 / 改过它的文本时");
         MENU_ITEMS = new java.util.IdentityHashMap<Object, Object[]>();
         int ok = 0;
-        ok += hookRecord(cl) ? 1 : 0;
-        ok += hookBubble(cl) ? 1 : 0;
-        ok += hookMenu(cl) ? 1 : 0;
-        ok += hookEmojiAsPic(cl) ? 1 : 0;
-        ok += hookNoAt(cl) ? 1 : 0;
-        ok += hookShowAt(cl) ? 1 : 0;
-        if (!hookSend()) {
-            retrySend(0);
+        ok += hookRecord(cl) ? 1 : 0;     
+        ok += hookBubble(cl) ? 1 : 0;     
+        ok += hookMenu(cl) ? 1 : 0;       
+        ok += hookEmojiAsPic(cl) ? 1 : 0; 
+        ok += hookNoAt(cl) ? 1 : 0;       
+        ok += hookShowAt(cl) ? 1 : 0;     
+        
+        try {
+            com.cathelperawa.owo.app.proto.PbSender.setupSendDump();
+        } catch (Throwable ignore) {
+        }
+        if (!hookSend()) {                 
+            retrySend(0);                  
         } else {
             ok += 1;
         }
@@ -120,21 +144,23 @@ public class FeatureChatTools extends HookItemBase {
             return;
         }
         final long wait = attempt == 0 ? 3000L : 2500L;
-        new Thread(new Runnable() { @Override public void run() {
+        Bg.run(new Runnable() { @Override public void run() {
             try { Thread.sleep(wait); } catch (Throwable ignore) {}
             if (hookSend()) {
                 MsgStore.add("[小工具] sendMsg 延迟第 " + (attempt + 1) + " 次挂载成功");
             } else {
                 retrySend(attempt + 1);
             }
-        } }, "cat-tools-retry").start();
+        } }, "cat-tools-retry");
     }
+
+    
 
     @Override
     protected void check(com.cathelperawa.owo.app.core.SelfCheckResult.Checker c) {
         Class<?> item = c.cls("AIOMsgItem", CLS_MSG_ITEM);
         c.method("getMsgRecord", item, "getMsgRecord");
-
+        
         Class<?> reply = c.cls("输入回复类", CLS_INPUT_REPLY);
     }
 
@@ -153,10 +179,11 @@ public class FeatureChatTools extends HookItemBase {
         hookAfter(get, new HookApi.Action() {
             @Override public void call(XC_MethodHook.MethodHookParam p) {
 
+                
                 try {
                     Object rec = p.getResult();
                     if (rec == null) return;
-
+                    
                     if (DIAG_VERBOSE) {
                         int sub = Refl.i32(Refl.field(rec, "subMsgType"), 0);
                         long id = Refl.lng(Refl.field(rec, "msgId"), 0);
@@ -180,7 +207,7 @@ public class FeatureChatTools extends HookItemBase {
         int sub = Refl.i32(Refl.field(rec, "subMsgType"), 0);
         if ((sub & FLASH_BIT) == 0) return;
         Refl.setField(rec, "subMsgType", sub & ~FLASH_BIT);
-
+        
         try { Refl.setField(rec, "guildName", FLASH_MARK); } catch (Throwable ignore) {}
         MsgStore.add("[闪照] 已清位 " + sub + " → " + (sub & ~FLASH_BIT) + "，已打标记");
     }
@@ -204,6 +231,11 @@ public class FeatureChatTools extends HookItemBase {
         }
     }
 
+    
+
+    
+
+    
     private boolean hookBubble(ClassLoader cl) {
         Class<?> vb = HookApi.findClass(cl, CLS_BUBBLE_VB);
         if (vb == null) {
@@ -234,13 +266,13 @@ public class FeatureChatTools extends HookItemBase {
                 try {
                     if (ctx == null || !flashOn(ctx)) return;
                     if (p.args == null || p.args.length < 2) return;
-
+                
                     Object msgItem = p.args[1];
                     if (msgItem == null) return;
                     Object rec = recordOf(msgItem);
                     if (rec == null) return;
                     if (!isFlashMarked(rec)) return;
-
+                    
                     View msgView = findViewField(p.thisObject);
                     if (msgView == null) {
                         MsgStore.add("[闪照] 没在 thisObject 里找到 View 字段");
@@ -257,7 +289,7 @@ public class FeatureChatTools extends HookItemBase {
 
     private static View findViewField(Object holder) {
         if (holder == null) return null;
-        if (holder instanceof View) return (View) holder;
+        if (holder instanceof View) return (View) holder;   
         Class<?> c = holder.getClass();
         int depth = 0;
         while (c != null && c != Object.class && depth++ < 8) {
@@ -299,7 +331,7 @@ public class FeatureChatTools extends HookItemBase {
                 }
             }
             if (bubble == null) {
-
+                
                 for (int i = 0; i < root.getChildCount(); i++) {
                     View ch = root.getChildAt(i);
                     if (ch.getClass().getName().contains("Bubble")
@@ -352,14 +384,14 @@ public class FeatureChatTools extends HookItemBase {
             tip.setPadding((int) (14 * d), (int) (7 * d), (int) (14 * d), (int) (7 * d));
             android.graphics.drawable.GradientDrawable bg =
                     new android.graphics.drawable.GradientDrawable();
-
+            
             bg.setColors(new int[]{0xFF8FB8FF, 0xFFF07CA8});
             bg.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
-            bg.setCornerRadius(999f);
-            bg.setStroke((int) Math.max(1, d), 0x66FFFFFF);
+            bg.setCornerRadius(999f);                      
+            bg.setStroke((int) Math.max(1, d), 0x66FFFFFF); 
             tip.setBackgroundDrawable(bg);
             tip.setAlpha(0f);
-            tip.animate().alpha(0.92f).setDuration(220).start();
+            tip.animate().alpha(0.92f).setDuration(220).start();   
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -384,8 +416,13 @@ public class FeatureChatTools extends HookItemBase {
         return null;
     }
 
+    
+
+    
+
     private boolean hookSend() {
 
+        
         String[] classes = new String[]{
                 "com.tencent.qqnt.msg.api.impl.MsgServiceImpl",
                 "com.tencent.qqnt.msg.MsgService",
@@ -398,7 +435,7 @@ public class FeatureChatTools extends HookItemBase {
             for (final Method m : cls.getDeclaredMethods()) {
                 if (!"sendMsg".equals(m.getName())) continue;
                 Class<?>[] ps = m.getParameterTypes();
-
+                
                 boolean hasList = false;
                 for (Class<?> p : ps) {
                     if (List.class.isAssignableFrom(p)) { hasList = true; break; }
@@ -442,7 +479,7 @@ public class FeatureChatTools extends HookItemBase {
             }
 
             int chatType = Refl.i32(Refl.field(peerArg, "chatType"), 0);
-            if (chatType == 100) return;
+            if (chatType == 100) return;   
 
             Object faceEl = Refl.field(els.get(0), "faceElement");
             if (faceEl == null) return;
@@ -466,7 +503,7 @@ public class FeatureChatTools extends HookItemBase {
                 return;
             }
 
-            p.setResult(null);
+            p.setResult(null);   
             final String peerUid = Refl.strOr(Refl.field(peerArg, "peerUid"), "");
             final int ct = chatType;
             MsgStore.add("[点数] 命中 " + faceText + " chatType=" + ct + " peer=" + peerUid);
@@ -475,7 +512,7 @@ public class FeatureChatTools extends HookItemBase {
                 Context c = QQEnv.topActivity() != null ? QQEnv.topActivity() : ctx;
                 CatDialog.pick(c, title, labels, new CatDialog.OnPick() {
                     @Override public void run(int idx, String label) {
-
+                        
                         int val = (idx >= max)
                                 ? (1 + new java.util.Random().nextInt(max))
                                 : (idx + 1);
@@ -566,6 +603,14 @@ public class FeatureChatTools extends HookItemBase {
             + "\"5\":__RND2__"
             + "}";
 
+    
+
+    
+
+    
+
+    
+
     private boolean hookNoAt(ClassLoader cl) {
         Class<?> cls = HookApi.findClass(cl, CLS_INPUT_REPLY);
         if (cls == null) {
@@ -601,7 +646,7 @@ public class FeatureChatTools extends HookItemBase {
             @Override public void call(XC_MethodHook.MethodHookParam p) {
                 try {
                     if (ctx == null || !noAtOn(ctx)) return;
-                    p.setResult(null);
+                    p.setResult(null);   
                     if (DIAG) MsgStore.add("[去@] 已拦截一次自动@");
                 } catch (Throwable t) {
                     HookLog.e("去自动@ 钩子异常", t);
@@ -612,13 +657,27 @@ public class FeatureChatTools extends HookItemBase {
         return true;
     }
 
-    private static final int AT_COLOR = 0xFF2B4BE8;
+    
 
+    
+
+    
+
+    
+
+    
+
+    
+
+    private static final int AT_COLOR = 0xFF2B4BE8;
+    
     private static final Map<Spannable, Boolean> AT_DONE =
             java.util.Collections.synchronizedMap(
                     new java.util.WeakHashMap<Spannable, Boolean>());
 
     private boolean hookShowAt(ClassLoader cl) {
+
+        
 
         Class<?> vb = HookApi.findClass(cl, CLS_BUBBLE_VB);
         if (vb == null) {
@@ -637,7 +696,7 @@ public class FeatureChatTools extends HookItemBase {
             break;
         }
         if (target == null) {
-
+            
             for (Method m : vb.getDeclaredMethods()) {
                 if (m.getReturnType() != void.class) continue;
                 Class<?>[] ps = m.getParameterTypes();
@@ -677,7 +736,7 @@ public class FeatureChatTools extends HookItemBase {
         if (rec == null) return;
         int chatType = Refl.i32(Refl.field(rec, "chatType"), 0);
         int msgType = Refl.i32(Refl.field(rec, "msgType"), 0);
-
+        
         if (chatType != 2) return;
         if (msgType != 2 && msgType != 9) return;
 
@@ -690,6 +749,7 @@ public class FeatureChatTools extends HookItemBase {
         }
         if (els == null || els.isEmpty()) return;
 
+        
         java.util.ArrayList<String> ats = new java.util.ArrayList<String>();
         java.util.ArrayList<String> atUids = new java.util.ArrayList<String>();
         for (Object el : els) {
@@ -785,7 +845,7 @@ public class FeatureChatTools extends HookItemBase {
     private static void onAtClick(Context c, String nick, String uid, String peerUinStr) {
         if (c == null) return;
         try {
-
+            
             String pureNick = nick == null ? "" : nick.trim();
             while (pureNick.startsWith("@")) pureNick = pureNick.substring(1).trim();
 
@@ -796,10 +856,10 @@ public class FeatureChatTools extends HookItemBase {
             diag("[@高亮] 跳资料卡 nick=" + pureNick + " uid=" + uid + " uin=" + uin);
 
             ClassLoader cl = QQEnv.classLoader();
-            Class<?> iface = Class.forName(
-                    "com.tencent.qqnt.aio.adapter.api.IContactApi", false, cl);
-            Class<?> qroute = Class.forName(
-                    "com.tencent.mobileqq.qroute.QRoute", false, cl);
+            Class<?> iface = ClassResolver.find(cl, "aio.contactApi",
+                    "com.tencent.qqnt.aio.adapter.api.IContactApi");
+            Class<?> qroute = ClassResolver.find(cl, "qroute.di",
+                    "com.tencent.mobileqq.qroute.QRoute");
             Method api = qroute.getMethod("api", Class.class);
             api.setAccessible(true);
             Object impl = api.invoke(null, iface);
@@ -813,8 +873,10 @@ public class FeatureChatTools extends HookItemBase {
             }
             diag("[@高亮] 用 Context=" + actx.getClass().getName());
 
-            Class<?> recCls = Class.forName(
-                    "com.tencent.qqnt.kernel.nativeinterface.MsgRecord", false, cl);
+            
+            
+            Class<?> recCls = ClassResolver.find(cl, "qqnt.msgRecord",
+                    "com.tencent.qqnt.kernel.nativeinterface.MsgRecord");
             Object rec = recCls.newInstance();
             long uinL = 0L;
             try { uinL = uin == null ? 0L : Long.parseLong(uin); } catch (Throwable ignore) {}
@@ -827,8 +889,8 @@ public class FeatureChatTools extends HookItemBase {
             setField(recCls, rec, "peerUin", peerUin);
             setField(recCls, rec, "chatType", 2);
 
-            Class<?> itemCls = Class.forName(
-                    "com.tencent.mobileqq.aio.msg.AIOMsgItem", false, cl);
+            Class<?> itemCls = ClassResolver.find(cl, "aio.msgItem",
+                    "com.tencent.mobileqq.aio.msg.AIOMsgItem");
             Object msgItem = itemCls.getConstructor(recCls).newInstance(rec);
 
             for (Method m : impl.getClass().getMethods()) {
@@ -850,7 +912,7 @@ public class FeatureChatTools extends HookItemBase {
 
     private static TextView findTextView(Object holder) {
         if (holder == null) return null;
-
+        
         Class<?> c = holder.getClass();
         int depth = 0;
         while (c != null && depth++ < 6) {
@@ -910,8 +972,9 @@ public class FeatureChatTools extends HookItemBase {
         try {
             Context c = QQEnv.appContext();
             if (c == null) return;
-            java.io.File f = new java.io.File(c.getFilesDir(), "cathelper/atdiag.txt");
-            f.getParentFile().mkdirs();
+            java.io.File d = com.cathelperawa.owo.app.core.DataDir.global("diag");
+            if (d == null) return;
+            java.io.File f = new java.io.File(d, "atdiag.txt");
             java.io.FileWriter w = new java.io.FileWriter(f, true);
             w.write(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
                     .format(new java.util.Date()) + "  " + s + "\n");
@@ -920,6 +983,7 @@ public class FeatureChatTools extends HookItemBase {
         }
     }
 
+    
     private static void setField(Class<?> cls, Object obj, String name, Object val) {
         Class<?> c = cls;
         while (c != null) {
@@ -935,16 +999,18 @@ public class FeatureChatTools extends HookItemBase {
     }
 
     private static final class AtClickSpan extends ClickableSpan {
-
+        
         private final String target;
-
+        
         private final String uid;
-
+        
         private final String peerUin;
 
         AtClickSpan(String nick, String uid, String peerUin) {
             this.target = nick; this.uid = uid; this.peerUin = peerUin;
         }
+
+        
 
         @Override public void onClick(View widget) {
             try {
@@ -956,6 +1022,9 @@ public class FeatureChatTools extends HookItemBase {
         }
     }
 
+    
+
+    
     private boolean hookEmojiAsPic(ClassLoader cl) {
         Class<?> cls = HookApi.findClass(cl,
                 "com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl");
@@ -971,7 +1040,7 @@ public class FeatureChatTools extends HookItemBase {
             break;
         }
         if (target == null) {
-
+            
             target = HookApi.findMethodByParams(cls, boolean.class,
                     null, null, View.class, List.class);
         }
@@ -985,7 +1054,7 @@ public class FeatureChatTools extends HookItemBase {
             @Override public void call(XC_MethodHook.MethodHookParam p) {
                 try {
                     if (ctx == null || !emojiOn(ctx)) return;
-                    p.setResult(Boolean.FALSE);
+                    p.setResult(Boolean.FALSE);   
                 } catch (Throwable t) {
                     HookLog.e("表情看图钩子异常", t);
                 }
@@ -993,6 +1062,8 @@ public class FeatureChatTools extends HookItemBase {
         });
         return true;
     }
+
+    
 
     private boolean hookMenu(ClassLoader cl) {
         Class<?> expand = HookApi.findClass(cl,
@@ -1017,7 +1088,7 @@ public class FeatureChatTools extends HookItemBase {
     private void onMenu(XC_MethodHook.MethodHookParam p) {
         try {
             Context c = ctx;
-            if (c == null || !anyOn(c)) return;
+            if (c == null) return;
             Object uiE = p.args[0];
             if (uiE == null) return;
             List<Object> items = findList(uiE);
@@ -1034,8 +1105,27 @@ public class FeatureChatTools extends HookItemBase {
             }
 
             if (editOn(c) && hasEditableText(rec)) insertMenu(menuD, c, msgItem, items, T_EDIT);
+            
+            if (hasArk(rec)) insertMenu(menuD, c, msgItem, items, T_SKIN);
+
+            if (hasPtt(rec)) insertMenu(menuD, c, msgItem, items, T_VOICE);
+            
+            injectScriptMenus(menuD, c, msgItem, items);
         } catch (Throwable t) {
             HookLog.e("菜单注入异常", t);
+        }
+    }
+
+    private void injectScriptMenus(Class<?> menuD, Context c, Object msgItem,
+                                   List<Object> items) {
+        try {
+            java.util.List<com.cathelperawa.owo.app.script.ScriptMenuRegistry.Item> list =
+                    com.cathelperawa.owo.app.script.ScriptMenuRegistry.all();
+            for (int i = 0; i < list.size(); i++) {
+                insertMenu(menuD, c, msgItem, items, list.get(i).title());
+            }
+        } catch (Throwable t) {
+            HookLog.w("注入脚本菜单失败 " + t);
         }
     }
 
@@ -1043,16 +1133,25 @@ public class FeatureChatTools extends HookItemBase {
                             List<Object> items, String title) {
         try {
             for (Object o : items) {
-                if (o != null && title.equals(titleOf(o))) return;
+                if (o != null && title.equals(titleOf(o))) return;   
             }
-            Object item = buildMenuItem(menuD, c, msgItem);
+            Object item;
+            if (com.cathelperawa.owo.app.core.Host.isQQ()) {
+
+                item = com.cathelperawa.owo.app.util.MenuKit.clone(items.get(0));
+                com.cathelperawa.owo.app.util.MenuKit.setTitle(item, title);
+            } else {
+                item = buildMenuItem(menuD, c, msgItem);
+                if (item != null) {
+                    setFieldByType(item, boolean.class, false);
+                    setFieldByType(item, int.class, 0);
+                    setFieldByType(item, String.class, title);
+                }
+            }
             if (item == null) {
-                MsgStore.add("[插入·" + title + "] buildMenuItem 返回 null");
+                MsgStore.add("[插入·" + title + "] 菜单项构造失败");
                 return;
             }
-            setFieldByType(item, boolean.class, false);
-            setFieldByType(item, int.class, 0);
-            setFieldByType(item, String.class, title);
             synchronized (MENU_ITEMS) {
                 MENU_ITEMS.put(item, new Object[]{msgItem, title});
             }
@@ -1108,8 +1207,7 @@ public class FeatureChatTools extends HookItemBase {
         box.setPadding((int) (6 * d), (int) (6 * d), (int) (6 * d), (int) (6 * d));
         android.widget.ImageView iv = new android.widget.ImageView(c);
         try {
-            iv.setImageDrawable(c.getResources().getDrawable(
-                    com.cathelperawa.owo.app.R.drawable.ic_module, null));
+            iv.setImageDrawable(com.cathelperawa.owo.app.util.ModIcon.ic(c));
         } catch (Throwable ignore) {
         }
         box.addView(iv, new LinearLayout.LayoutParams((int) (26 * d), (int) (26 * d)));
@@ -1126,11 +1224,344 @@ public class FeatureChatTools extends HookItemBase {
         box.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 if (T_EDIT.equals(title)) openEditDialog(c, msgItem);
+                else if (T_SKIN.equals(title)) openSkinEditor(c, msgItem);
+                
+                else if (T_VOICE.equals(title)) saveVoice(c, msgItem);
+                else if (title != null && title.startsWith(
+                        com.cathelperawa.owo.app.script.ScriptMenuRegistry.PREFIX)) {
+                    
+                    try {
+                        com.cathelperawa.owo.app.script.ScriptMenuRegistry.dispatchFromHost(
+                                title, recordOf(msgItem));
+                    } catch (Throwable t) {
+                        HookLog.e("脚本菜单分发失败", t);
+                    }
+                }
             }
         });
         box.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         return box;
+    }
+
+    
+
+    
+    private static boolean hasStorable(Object rec) {
+        try {
+            if (rec == null) return false;
+            Object elsObj = Refl.field(rec, "elements");
+            if (!(elsObj instanceof List)) return false;
+            for (Object el : (List<?>) elsObj) {
+                if (el == null) continue;
+                if (Refl.field(el, "textElement") != null) {
+                    
+                    int n = 0;
+                    for (java.lang.reflect.Field f : el.getClass().getFields()) {
+                        try {
+                            Object v = f.get(el);
+                            if (v == null) continue;
+                            if (v instanceof Boolean && !((Boolean) v)) continue;
+                            if (v instanceof Number && ((Number) v).longValue() == 0) continue;
+                            n++;
+                        } catch (Throwable ignore) {
+                        }
+                    }
+                    if (n > 1) return true;
+                    continue;
+                }
+                return true;
+            }
+        } catch (Throwable ignore) {
+        }
+        return false;
+    }
+
+    private static boolean hasPtt(Object rec) {
+        try {
+            if (rec == null) return false;
+            Object elsObj = Refl.field(rec, "elements");
+            if (!(elsObj instanceof List)) return false;
+            for (Object el : (List<?>) elsObj) {
+                if (el != null && Refl.field(el, "pttElement") != null) return true;
+            }
+        } catch (Throwable ignore) {
+        }
+        return false;
+    }
+
+    private void saveVoice(final Context c, Object msgItem) {
+        try {
+            final Object rec = recordOf(msgItem);
+            if (rec == null) { toast("没拿到消息"); return; }
+            final com.cathelperawa.owo.app.protocol.PttGrabber.Source src =
+                    com.cathelperawa.owo.app.protocol.PttGrabber.fromRecord(rec);
+            if (src == null || "none".equals(src.kind)) {
+                toast("这条语音取不到文件");
+                return;
+            }
+            toast("正在取语音…");
+            final int sec = src.seconds;
+            Bg.run(new Runnable() {
+                @Override public void run() {
+                    String msg;
+                    try {
+                        byte[] b = com.cathelperawa.owo.app.protocol.PttGrabber.bytes(src);
+                        if (b == null) {
+                            msg = "取不到语音，可能已经过期了";
+                        } else {
+                            String tx = src.text == null ? "" : src.text.trim();
+                            String name = tx.length() > 0
+                                    ? (tx.length() > 12 ? tx.substring(0, 12) + "…" : tx)
+                                    : ("语音 " + new java.text.SimpleDateFormat("HH:mm",
+                                    java.util.Locale.CHINA).format(new java.util.Date()));
+                            com.cathelperawa.owo.app.proto.VoiceVault.Item it =
+                                    com.cathelperawa.owo.app.proto.VoiceVault.addBytes(
+                                            c, name, b, "长按", sec * 1000L);
+                            msg = it == null
+                                    ? "存不进去…（写盘失败或文件太大）"
+                                    : ("已存进语音库 · " + it.name
+                                    + (it.hasSilk ? "（腾讯语音）" : "（普通音频）"));
+                        }
+                    } catch (Throwable t) {
+                        HookLog.e("存语音异常", t);
+                        msg = "存语音异常：" + t;
+                    }
+                    final String fm = msg;
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(
+                            new Runnable() {
+                                @Override public void run() { toast(fm); }
+                            });
+                }
+            }, "cat-voice-save");
+        } catch (Throwable t) {
+            HookLog.e("saveVoice 失败", t);
+            toast("存语音异常：" + t);
+        }
+    }
+
+    private void saveMedia(final Context c, Object msgItem) {
+        try {
+            final Object rec = recordOf(msgItem);
+            if (rec == null) { toast("没拿到消息"); return; }
+            Object elsObj = Refl.field(rec, "elements");
+            if (!(elsObj instanceof List)) { toast("这条没有元素"); return; }
+            boolean picFlag = false;
+            final String medType0 = mediaType(elsObj);
+            for (Object el : (List<?>) elsObj) {
+                if (Refl.field(el, "picElement") != null) { picFlag = true; break; }
+            }
+            final boolean isPic = picFlag;
+
+            for (Object el : (List<?>) elsObj) {
+                if (el == null) continue;
+                if (Refl.field(el, "textElement") != null) continue;
+                String js = com.cathelperawa.owo.app.proto.MediaVault.fromElement(el);
+                if (js != null) {
+                    com.cathelperawa.owo.app.proto.MediaVault.add(c, js,
+                            com.cathelperawa.owo.app.proto.MediaVault
+                                    .niceName(js, com.cathelperawa.owo.app.proto.MediaVault
+                                            .guessType(js)),
+                            com.cathelperawa.owo.app.proto.MediaVault.guessType(js));
+                    toast("已存进素材库");
+                    return;
+                }
+                break;
+            }
+
+            final int chatType = Refl.i32(Refl.field(rec, "chatType"), 0);
+            final String wantCmd = (chatType == 1) ? "MessageSvc.PbGetOneDayRoamMsg"
+                    : (chatType == 2 ? "MessageSvc.PbGetGroupMsg" : null);
+            if (wantCmd == null) { toast("这种会话拉不了原始数据"); return; }
+
+            toast("正在拉原始数据…");
+            com.cathelperawa.owo.app.feature.FeatureMsfTap.expect(wantCmd,
+                    new com.cathelperawa.owo.app.feature.FeatureMsfTap.Listener() {
+                        @Override public void onResp(String cmd, org.json.JSONObject content) {
+                            try {
+                                
+                                try {
+                                    String dump = content.toString();
+                                    HookLog.i("存素材回包 len=" + dump.length()
+                                            + " head=" + dump.substring(0, Math.min(600, dump.length())));
+                                } catch (Throwable ignore) {
+                                }
+                                Object els = com.cathelperawa.owo.app.feature.FeatureMsfTap
+                                        .extractElements(content);
+                                String js = pickMediaJson(els);
+                                if (js == null) {
+                                    toast("回包里没有图片元素");
+                                    return;
+                                }
+                                com.cathelperawa.owo.app.proto.MediaVault.add(c, js,
+                                        com.cathelperawa.owo.app.proto.MediaVault
+                                                .niceName(js, com.cathelperawa.owo.app.proto.MediaVault
+                                                        .guessType(js)),
+                                        com.cathelperawa.owo.app.proto.MediaVault.guessType(js));
+                                toast("已存进素材库");
+                            } catch (Throwable t) {
+                                HookLog.e("存素材回包失败", t);
+                                toast("存素材失败：" + t);
+                            }
+                        }
+                    });
+            if (chatType == 1) {
+                com.cathelperawa.owo.app.protocol.MsgFetcher.pullC2C(rec);
+            } else {
+                com.cathelperawa.owo.app.protocol.MsgFetcher.pullGroup(rec);
+            }
+        } catch (Throwable t) {
+            HookLog.e("存素材失败", t);
+            toast("存素材失败：" + t);
+        }
+    }
+
+    private static String mediaType(Object elsObj) {
+        try {
+            for (Object el : (List<?>) elsObj) {
+                if (el == null) continue;
+                if (Refl.field(el, "picElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_PIC;
+                if (Refl.field(el, "marketFaceElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_FACE;
+                if (Refl.field(el, "pttElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_PTT;
+                if (Refl.field(el, "videoElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_VIDEO;
+                if (Refl.field(el, "arkElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_ARK;
+                if (Refl.field(el, "fileElement") != null)
+                    return com.cathelperawa.owo.app.proto.MediaVault.T_FILE;
+            }
+        } catch (Throwable ignore) {
+        }
+        return com.cathelperawa.owo.app.proto.MediaVault.T_OTHER;
+    }
+
+    private static String pickMediaJson(Object els) {
+        try {
+            if (els instanceof org.json.JSONArray) {
+                org.json.JSONArray arr = (org.json.JSONArray) els;
+                boolean hasMedia = false;
+                for (int i = 0; i < arr.length(); i++) {
+                    Object o = arr.optJSONObject(i);
+                    if (!(o instanceof org.json.JSONObject)) continue;
+                    if (isMediaKey((org.json.JSONObject) o)) { hasMedia = true; break; }
+                }
+                if (!hasMedia) return null;          
+                return arr.toString();               
+            } else if (els instanceof org.json.JSONObject) {
+                org.json.JSONObject jo = (org.json.JSONObject) els;
+                return isMediaKey(jo) ? jo.toString() : null;
+            }
+        } catch (Throwable ignore) {
+        }
+        return null;
+    }
+
+    private static boolean isMediaKey(org.json.JSONObject o) {
+        if (o == null) return false;
+        return o.has("2") || o.has("53") || o.has("5") || o.has("7")
+                || o.has("51") || o.has("10") || o.has("3") || o.has("4");
+    }
+
+    private void forwardToGrab(final Context c, Object rec, final boolean isPic) {
+        try {
+            final long msgId = Refl.lng(Refl.field(rec, "msgId"), 0);
+            if (msgId == 0) { toast("拿不到 msgId"); return; }
+            final String selfUid = com.cathelperawa.owo.app.bridge.QQEnv.currentUid();
+            if (selfUid == null || selfUid.length() == 0) {
+                toast("拿不到自己的 uid");
+                return;
+            }
+            Object src = com.cathelperawa.owo.app.bridge.ContactFactory.make(
+                    com.cathelperawa.owo.app.bridge.CurrentChat.chatType(),
+                    com.cathelperawa.owo.app.bridge.CurrentChat.peerUid(), "");
+            final Object dst = com.cathelperawa.owo.app.bridge.ContactFactory.make(1, selfUid, "");
+            if (src == null || dst == null) { toast("会话构造失败"); return; }
+            com.cathelperawa.owo.app.proto.PbSender.setupSendDump();
+            com.cathelperawa.owo.app.proto.PbSender.lastPicElemJson = null;
+            toast("转发一次来抓数据…");
+            boolean ok = com.cathelperawa.owo.app.bridge.NtMsgApi.forward(
+                    java.util.Collections.singletonList(msgId), src,
+                    java.util.Collections.singletonList(dst));
+            HookLog.i("存素材: 转发抓包 ok=" + ok + " msgId=" + msgId);
+            if (!ok) { toast("转发失败，存不了"); return; }
+            Bg.run(new Runnable() {
+                @Override public void run() {
+                    long deadline = System.currentTimeMillis() + 15000;
+                    while (System.currentTimeMillis() < deadline) {
+                        String js = com.cathelperawa.owo.app.proto.PbSender.lastPicElemJson;
+                        if (js != null && js.length() > 20) {
+                            com.cathelperawa.owo.app.proto.MediaVault.add(c, js,
+                                    (isPic ? "图片 " : "表情 ") + (System.currentTimeMillis() % 100000));
+                            ui(new Runnable() {
+                                @Override public void run() {
+                                    CatToast.show("已存进素材库（转发的消息自己删掉）");
+                                }
+                            });
+                            return;
+                        }
+                        try { Thread.sleep(150); } catch (Throwable ignore) {}
+                    }
+                    ui(new Runnable() {
+                        @Override public void run() {
+                            CatToast.show("没抓到数据，存不了");
+                        }
+                    });
+                }
+            }, "media-grab");
+        } catch (Throwable t) {
+            HookLog.e("forwardToGrab 失败", t);
+            toast("存素材失败：" + t);
+        }
+    }
+
+    private static boolean hasArk(Object rec) {
+        return arkOf(rec) != null;
+    }
+
+    private static String arkOf(Object rec) {
+        try {
+            if (rec == null) return null;
+            Object elsObj = Refl.field(rec, "elements");
+            if (!(elsObj instanceof List)) return null;
+            for (Object el : (List<?>) elsObj) {
+                Object ae = Refl.field(el, "arkElement");
+                if (ae == null) continue;
+                Object bd = Refl.field(ae, "bytesData");
+                if (bd == null) continue;
+                String s = String.valueOf(bd);
+                if (s.indexOf("\"app\"") >= 0 && s.indexOf("\"view\"") >= 0) return s;
+            }
+        } catch (Throwable ignore) {
+        }
+        return null;
+    }
+
+    private void openSkinEditor(final Context c, Object msgItem) {
+        try {
+            final Object rec = recordOf(msgItem);
+            if (rec == null) { toast("没拿到消息"); return; }
+            String ark = arkOf(rec);
+            if (ark == null) { toast("这条不是卡片消息"); return; }
+            if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
+                toast("先在聊天里点开一个会话喵");
+                return;
+            }
+            
+            toast(com.cathelperawa.owo.app.feature.ArkSmart.badge(ark));
+            com.cathelperawa.owo.app.ui.ArkSkinSheet.open(c, ark, "签名并发送",
+                    new com.cathelperawa.owo.app.ui.ArkSkinSheet.OnDone() {
+                        @Override public void run(String nj) {
+                            
+                            com.cathelperawa.owo.app.feature.ArkSmart.send(c, nj, null);
+                        }
+                    });
+        } catch (Throwable t) {
+            HookLog.e("改外框失败", t);
+            toast("改外框异常：" + t);
+        }
     }
 
     private void openEditDialog(final Context c, Object msgItem) {
@@ -1161,9 +1592,9 @@ public class FeatureChatTools extends HookItemBase {
             }
             for (int i = 0; i < keys.length; i++) {
                 String orig = items.get(keys[i]);
-
+                
                 String label = keys.length > 1 ? ("第 " + (i + 1) + " 段") : null;
-
+                
                 LinearLayout box = CatPanel.field(c, i + 1, orig, "", label);
                 EditText et = CatPanel.fieldEdit(box);
                 edits[i] = et;
@@ -1173,7 +1604,7 @@ public class FeatureChatTools extends HookItemBase {
                 if (i > 0) bp.topMargin = (int) (12 * d);
                 container.addView(box, bp);
             }
-
+            
             if (keys.length == 1) {
                 android.widget.TextView note = new android.widget.TextView(c);
                 note.setText("原文： " + items.get(keys[0]));
@@ -1212,6 +1643,8 @@ public class FeatureChatTools extends HookItemBase {
         if (s == null) return "";
         return s.length() <= 42 ? s : s.substring(0, 39) + "...";
     }
+
+    
 
     private static boolean hasEditableText(Object rec) {
         Object elsObj = Refl.field(rec, "elements");
@@ -1318,7 +1751,7 @@ public class FeatureChatTools extends HookItemBase {
                 try {
                     f.setAccessible(true);
                     f.set(o, val);
-
+                    
                 } catch (Throwable ignore) {
                 }
             }

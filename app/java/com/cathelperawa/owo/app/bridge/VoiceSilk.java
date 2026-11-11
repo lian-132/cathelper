@@ -64,6 +64,8 @@ public final class VoiceSilk {
         }
     }
 
+    
+
     private static boolean download(String urlStr, File out) {
         InputStream in = null;
         FileOutputStream fo = null;
@@ -95,6 +97,8 @@ public final class VoiceSilk {
             try { if (fo != null) fo.close(); } catch (Throwable ignore) {}
         }
     }
+
+    
 
     private static byte[] mp3ToPcm(File src) {
         MediaExtractor extractor = null;
@@ -168,6 +172,8 @@ public final class VoiceSilk {
         }
     }
 
+    
+
     private static boolean pcmToSilk(Context ctx, byte[] pcm, String outPath) {
         Object codec = null;
         FileOutputStream fo = null;
@@ -179,6 +185,7 @@ public final class VoiceSilk {
             Class<?> clsSilk = Class.forName(
                     "com.tencent.mobileqq.utils.SilkCodecWrapper", true, cl);
 
+            
             Constructor<?> ctor = clsSilk.getConstructor(Context.class, boolean.class);
             ctor.setAccessible(true);
             codec = ctor.newInstance(ctx, true);
@@ -191,9 +198,9 @@ public final class VoiceSilk {
                     byte[].class, int.class);
             mEncode.setAccessible(true);
 
-            Field fQ = findField(clsSilk, "q");
-            Field fO = findField(clsSilk, "o");
-            Field fH = findField(clsSilk, "h");
+            Field fQ = findField(clsSilk, "q");     
+            Field fO = findField(clsSilk, "o");     
+            Field fH = findField(clsSilk, "h");     
             if (fQ == null || fH == null) {
                 MsgStore.add("[VoiceSilk-W] 拿不到 q/h 字段");
                 return false;
@@ -225,7 +232,7 @@ public final class VoiceSilk {
 
             while (off < total) {
                 int n = Math.min(frameLen, total - off);
-                java.util.Arrays.fill(frame, (byte) 0);
+                java.util.Arrays.fill(frame, (byte) 0);          
                 if (n > 0) System.arraycopy(pcm, off, frame, 0, n);
                 zeroPad += frameLen - n;
                 off += frameLen;
@@ -262,6 +269,8 @@ public final class VoiceSilk {
             return false;
         } finally {
 
+            
+            
             try { if (fo != null) fo.close(); } catch (Throwable ignore) {}
             try {
                 if (codec != null) {
@@ -279,5 +288,173 @@ public final class VoiceSilk {
             catch (Throwable ignore) { c = c.getSuperclass(); }
         }
         return null;
+    }
+
+    
+
+    
+    
+    public static volatile int lastDurationMs = 0;
+
+    public static String audioToSilk(Context ctx, File src, String outPath, int maxSeconds) {
+        lastDurationMs = 0;
+        try {
+            if (src == null || !src.exists() || src.length() == 0) {
+                MsgStore.add("[VoiceSilk-W] audioToSilk: 源文件不存在");
+                return null;
+            }
+            
+            if (maxSeconds <= 0) maxSeconds = 3600;
+            byte[] pcm = decodeMono16k(src, maxSeconds);
+            if (pcm == null || pcm.length < FRAME) {
+                MsgStore.add("[VoiceSilk-W] audioToSilk: 解码结果太短 " +
+                        (pcm == null ? "null" : pcm.length));
+                return null;
+            }
+            MsgStore.add("[VoiceSilk] 音乐 PCM " + pcm.length + " 字节（约 "
+                    + (pcm.length * 1000L / 2 / SAMPLE_RATE) + "ms）");
+            lastDurationMs = (int) Math.min(Integer.MAX_VALUE,
+                    pcm.length * 1000L / 2 / SAMPLE_RATE);
+            if (!pcmToSilk(ctx, pcm, outPath)) return null;
+            return outPath;
+        } catch (Throwable t) {
+            HookLog.e("VoiceSilk.audioToSilk 异常", t);
+            MsgStore.add("[VoiceSilk-W] audioToSilk 异常 " + t);
+            return null;
+        }
+    }
+
+    private static byte[] decodeMono16k(File src, int maxSeconds) {
+        MediaExtractor extractor = null;
+        MediaCodec codec = null;
+        try {
+            extractor = new MediaExtractor();
+            extractor.setDataSource(src.getAbsolutePath());
+
+            int track = -1;
+            MediaFormat format = null;
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
+                MediaFormat f = extractor.getTrackFormat(i);
+                String mime = f.getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("audio/")) {
+                    track = i;
+                    format = f;
+                    break;
+                }
+            }
+            if (track < 0 || format == null) return null;
+            extractor.selectTrack(track);
+
+            int srcRate = format.containsKey(MediaFormat.KEY_SAMPLE_RATE)
+                    ? format.getInteger(MediaFormat.KEY_SAMPLE_RATE) : 44100;
+            int channels = format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)
+                    ? format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) : 2;
+            boolean isFloat = false;
+            try {
+                if (format.containsKey("pcm-encoding")) {
+                    int enc = format.getInteger("pcm-encoding");
+                    isFloat = (enc == 4);   
+                }
+            } catch (Throwable ignore) {
+            }
+            if (srcRate <= 0) srcRate = 44100;
+            if (channels <= 0) channels = 2;
+
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            codec = MediaCodec.createDecoderByType(mime);
+            codec.configure(format, null, null, 0);
+            codec.start();
+
+            ByteBuffer[] inBufs = codec.getInputBuffers();
+            ByteBuffer[] outBufs = codec.getOutputBuffers();
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            ByteArrayOutputStream raw = new ByteArrayOutputStream();
+
+            long maxBytes = (long) maxSeconds * srcRate * channels * 2;
+            boolean inputDone = false;
+            boolean outputDone = false;
+            while (!outputDone) {
+                if (!inputDone) {
+                    int idx = codec.dequeueInputBuffer(10000);
+                    if (idx >= 0) {
+                        ByteBuffer buf = inBufs[idx];
+                        int size = extractor.readSampleData(buf, 0);
+                        if (size < 0) {
+                            codec.queueInputBuffer(idx, 0, 0, 0,
+                                    MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                            inputDone = true;
+                        } else {
+                            codec.queueInputBuffer(idx, 0, size, extractor.getSampleTime(), 0);
+                            extractor.advance();
+                        }
+                    }
+                }
+                int idx = codec.dequeueOutputBuffer(info, 10000);
+                if (idx >= 0) {
+                    if (info.size > 0) {
+                        ByteBuffer buf = outBufs[idx];
+                        byte[] chunk = new byte[info.size];
+                        buf.position(info.offset);
+                        buf.limit(info.offset + info.size);
+                        buf.get(chunk);
+                        raw.write(chunk);
+                    }
+                    codec.releaseOutputBuffer(idx, false);
+                    if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) outputDone = true;
+                    if (raw.size() >= maxBytes) outputDone = true;   
+                }
+            }
+            return downmixAndResample(raw.toByteArray(), srcRate, channels, isFloat, maxSeconds);
+        } catch (Throwable t) {
+            HookLog.e("VoiceSilk.decodeMono16k 异常", t);
+            return null;
+        } finally {
+            try { if (codec != null) { codec.stop(); codec.release(); } } catch (Throwable ignore) {}
+            try { if (extractor != null) extractor.release(); } catch (Throwable ignore) {}
+        }
+    }
+
+    private static byte[] downmixAndResample(byte[] raw, int srcRate, int channels,
+                                             boolean isFloat, int maxSeconds) {
+        if (raw == null || raw.length < 4) return null;
+
+        int frameBytes = channels * (isFloat ? 4 : 2);
+        if (frameBytes <= 0) return null;
+        int frames = raw.length / frameBytes;
+        if (frames <= 0) return null;
+
+        float[] mono = new float[frames];
+        java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(raw).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        for (int i = 0; i < frames; i++) {
+            float sum = 0f;
+            for (int ch = 0; ch < channels; ch++) {
+                int pos = i * frameBytes + ch * (isFloat ? 4 : 2);
+                if (pos + (isFloat ? 4 : 2) > raw.length) break;
+                if (isFloat) sum += bb.getFloat(pos);
+                else sum += bb.getShort(pos) / 32768f;
+            }
+            mono[i] = sum / channels;
+        }
+
+        int outFrames = (int) ((long) frames * SAMPLE_RATE / srcRate);
+        int cap = maxSeconds * SAMPLE_RATE;
+        if (outFrames > cap) outFrames = cap;
+        if (outFrames <= 0) return null;
+
+        byte[] out = new byte[outFrames * 2];
+        java.nio.ByteBuffer ob = java.nio.ByteBuffer.wrap(out)
+                .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        double step = (double) srcRate / SAMPLE_RATE;
+        for (int i = 0; i < outFrames; i++) {
+            double pos = i * step;
+            int i0 = (int) pos;
+            int i1 = Math.min(i0 + 1, frames - 1);
+            float frac = (float) (pos - i0);
+            float v = mono[i0] * (1 - frac) + mono[i1] * frac;
+            if (v > 1f) v = 1f;
+            if (v < -1f) v = -1f;
+            ob.putShort((short) (v * 32767));
+        }
+        return out;
     }
 }

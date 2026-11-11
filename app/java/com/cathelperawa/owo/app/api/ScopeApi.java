@@ -18,6 +18,7 @@ public final class ScopeApi {
 
     public static void toggleSelected(String uid) { MsgStore.toggleSelected(uid); }
 
+    
     public static boolean allows(String uid) { return MsgStore.allows(uid); }
 
     public static void toggleUnderAll(String uid) { MsgStore.toggleUnderAll(uid); }

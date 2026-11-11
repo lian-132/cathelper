@@ -42,7 +42,7 @@ public final class QPacketHelper {
                 }
                 List<String> plus = new ArrayList<>(list);
                 plus.add(str);
-
+                
                 if (plus.equals(java.util.Arrays.asList("3", "1", "2"))) {
                     intValue = 2;
                 }
@@ -81,7 +81,7 @@ public final class QPacketHelper {
             }
             return linkedHashMap;
         }
-
+        
         linkedHashMap.put(1, primitiveOf(jsonElement));
         return linkedHashMap;
     }
@@ -90,7 +90,7 @@ public final class QPacketHelper {
         if (v == null) return "";
         if (v instanceof String) return v;
         if (v instanceof Number) {
-
+            
             if (v instanceof Integer) return v;
             if (v instanceof Long) return v;
             double d = ((Number) v).doubleValue();
@@ -198,9 +198,12 @@ public final class QPacketHelper {
         }
     }
 
+    
+
+    
     public static boolean sendMessage(String elementsJson, String peer, boolean isGroup) {
         try {
-
+            
             Object parsed = new org.json.JSONTokener(elementsJson).nextValue();
             JSONArray build = new JSONArray();
             if (parsed instanceof JSONArray) {

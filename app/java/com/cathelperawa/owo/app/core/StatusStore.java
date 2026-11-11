@@ -1,5 +1,7 @@
 package com.cathelperawa.owo.app.core;
 
+import com.cathelperawa.owo.app.core.DataDir;
+
 import android.content.Context;
 
 import java.io.File;
@@ -27,21 +29,20 @@ public final class StatusStore {
             }
         } catch (Throwable ignore) {
         }
-        return new java.io.File(userDataRoot(), TIM_PKG + "/files");
+        return new java.io.File(userDataRoot(), Host.pkg() + "/files");
     }
 
     public static String hostFilesMsf() {
         java.io.File dir = hostFilesDir();
         return dir == null ? null
-                : new java.io.File(new java.io.File(dir, "cathelper"), FILE).getAbsolutePath();
+                : new java.io.File(DataDir.global(), FILE).getAbsolutePath();
     }
 
-    private static final String TIM_PKG = "com.tencent.tim";
-
+    
     private static String userDataRoot() {
         try {
             int uid = android.os.Process.myUid();
-            int userId = uid / 100000;
+            int userId = uid / 100000;      
             if (userId == 0) return "/data/data";
             return "/data/user/" + userId;
         } catch (Throwable t) {
@@ -50,7 +51,7 @@ public final class StatusStore {
     }
 
     @Deprecated
-    public static final String HOST_FILES = "/data/data/" + TIM_PKG + "/files/" + FILE;
+    public static String hostFilesPath() { return userDataRoot() + "/" + Host.pkg() + "/files/" + FILE; }
 
     public static void startAutoRefresh(final Context ctx) {
         if (ctx == null || timer != null) return;
@@ -59,13 +60,13 @@ public final class StatusStore {
             @Override public void run() {
                 try {
                     int now = totalFireCount();
-                    if (now == lastSavedFireTotal) return;
+                    if (now == lastSavedFireTotal) return;   
                     lastSavedFireTotal = now;
                     saveQuiet(ctx);
                 } catch (Throwable ignore) {
                 }
             }
-        }, 60000L, 60000L);
+        }, 60000L, 60000L);   
     }
 
     public static void stopAutoRefresh() {
@@ -109,26 +110,32 @@ public final class StatusStore {
                 .append(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
                         java.util.Locale.US).format(new java.util.Date()))
                 .append('\n');
+        
+        try {
+            String bt = BootTiming.summary();
+            if (bt != null && bt.length() > 0) sb.append("# 启动耗时 · ").append(bt).append('\n');
+        } catch (Throwable ignore) {
+        }
         try {
             java.util.List<HookItemBase> all = HookItemFactory.all();
             for (HookItemBase item : all) {
-                HookItem meta = item.rawMeta();
+                HookItem meta = item.meta();
                 FeatureReport rep = item.report();
                 if (meta == null || rep == null) continue;
                 com.cathelperawa.owo.app.core.SelfCheckResult sc = item.selfCheck();
                 sb.append("F\t")
                         .append(safe(item.switchKey())).append('\t')
-                        .append(safe(item.displayName())).append('\t')
-                        .append(safe(item.displayPath())).append('\t')
+                        .append(safe(meta.name())).append('\t')
+                        .append(safe(meta.path())).append('\t')
                         .append(rep.status().name()).append('\t')
                         .append(safe(rep.summary())).append('\t')
                         .append(safe(rep.reason())).append('\t')
-
+                        
                         .append(rep.fireCount()).append('\t')
                         .append(safe(rep.fireSummary())).append('\t')
-
+                        
                         .append(rep.isInstrumented() ? "1" : "0").append('\t')
-
+                        
                         .append(sc == null || sc.isEmpty() ? "" :
                                 (sc.passCount() + "/" + sc.total())).append('\t')
                         .append(sc == null || sc.isEmpty() ? "" :
@@ -139,11 +146,17 @@ public final class StatusStore {
         } catch (Throwable t) {
             HookLog.e("StatusStore.save 收集失败", t);
         }
-        write(new File(ctx.getFilesDir(), FILE), sb.toString());
+
+        
+        java.io.File dir = ctx.getFilesDir();
+        java.io.File target = Proc.isSlave()
+                ? new java.io.File(dir, "status.slave.txt")
+                : new java.io.File(dir, FILE);
+        write(target, sb.toString());
     }
 
     public static String readHostStatus() {
-
+        
         java.util.List<String> paths = new java.util.ArrayList<String>();
         String p1 = hostFiles();
         String p2 = hostFilesMsf();
@@ -158,7 +171,7 @@ public final class StatusStore {
             } catch (Throwable ignore) {
             }
         }
-
+        
         for (String p : paths) {
             String s = readViaSu(p);
             if (s != null && s.trim().length() > 0) return s;
@@ -166,10 +179,20 @@ public final class StatusStore {
         return null;
     }
 
+    public static String readHostFile(String name) {
+        String p = hostFiles() + "/" + name;
+        try {
+            File f = new File(p);
+            if (f.isFile()) return read(f);
+        } catch (Throwable ignore) {
+        }
+        return readViaSu(p);
+    }
+
     private static String readViaSu(String path) {
         java.lang.Process proc = null;
         try {
-
+            
             proc = new ProcessBuilder("su", "-c", "cat '" + path + "'").redirectErrorStream(true).start();
             final java.lang.Process fp = proc;
             final boolean[] done = {false};
@@ -195,13 +218,18 @@ public final class StatusStore {
             done[0] = true;
             try { proc.waitFor(); } catch (Throwable ignore) {}
             String s = new String(bo.toByteArray(), "UTF-8");
-
+            
             return s.contains("F\t") ? s : null;
         } catch (Throwable t) {
             return null;
         } finally {
             try { if (proc != null) proc.destroy(); } catch (Throwable ignore) {}
         }
+    }
+
+    
+    public static String readAbsoluteViaSu(String path) {
+        return readViaSu(path);
     }
 
     public static String read(File f) {

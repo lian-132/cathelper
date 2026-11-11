@@ -6,6 +6,9 @@ public final class ChatMixApi {
 
     private ChatMixApi() {}
 
+    
+
+    
     public static boolean isOn() {
         return FeatureChatMix.on();
     }
@@ -22,6 +25,9 @@ public final class ChatMixApi {
         FeatureChatMix.resetAlways();
     }
 
+    
+
+    
     public static boolean hasInput() {
         return FeatureChatMix.hasInput();
     }
@@ -53,6 +59,9 @@ public final class ChatMixApi {
         return FeatureChatMix.clearInput();
     }
 
+    
+
+    
     public static boolean openFullScreen() {
         return FeatureChatMix.openFullScreen();
     }
@@ -61,6 +70,9 @@ public final class ChatMixApi {
         return FeatureChatMix.hasAioContext();
     }
 
+    
+
+    
     public static boolean isGif(String path) {
         if (path == null) return false;
         String low = path.toLowerCase();
