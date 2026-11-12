@@ -596,6 +596,13 @@ public class MainActivity extends Activity {
             }
         });
 
+        findViewById(R.id.btn_github).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                com.cathelperawa.owo.app.ui.ExtLink.open(MainActivity.this,
+                        com.cathelperawa.owo.app.ui.ExtLink.REPO);
+            }
+        });
+
         btnExportCfg.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 pullUiToConfig();

@@ -30,6 +30,10 @@ public final class UnlockPage extends Page {
             {FeatureQqBrowser.K, "去你大爷的QQ浏览器", "网页一律交给系统浏览器打开", "u_browser"},
             
             {"u_card", "允许查看异常资料卡", "忽略账号异常状态，正常查看资料卡", "u_card"},
+            {com.cathelperawa.owo.app.feature.FeatureBypassArkLimit.K,
+                    "绕过TIM卡片点击限制",
+                    "解除TIM中部分卡片无法点击的问题",
+                    "u_card"},
             
             {com.cathelperawa.owo.app.feature.FeaturePttAutoText.K,
                     "语音消息自动转文字",

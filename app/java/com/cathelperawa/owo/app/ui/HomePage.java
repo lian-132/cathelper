@@ -305,6 +305,7 @@ public final class HomePage extends Page {
                 {"功能状态", "体检 · 哪些没起来", "art6", PAGE_STATUS},
                 {"防检测", "掐断崩溃 · 统计上报", "art1", PAGE_ANTI},
                 {"配置备份", "导出导入备份", "art2", PAGE_CONFIG},
+                {"加入交流群", "QQ 群 459547307", "art2", "@group"},
         };
 
         
@@ -315,7 +316,7 @@ public final class HomePage extends Page {
                 if (PAGE_CHAT.equals(k) || PAGE_FILE.equals(k)
                         || PAGE_FAKE.equals(k) || PAGE_HOOK.equals(k)
                         || PAGE_STATUS.equals(k) || PAGE_ANTI.equals(k)
-                        || PAGE_CONFIG.equals(k)) {
+                        || PAGE_CONFIG.equals(k) || "@group".equals(k)) {
                     keep.add(e);
                 }
             }
@@ -396,6 +397,11 @@ public final class HomePage extends Page {
             entry.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(final View v) {
                     press(v);
+                    if (pageKey != null && pageKey.startsWith("@")) {
+                        com.cathelperawa.owo.app.ui.ExtLink.open(ctx,
+                                com.cathelperawa.owo.app.ui.ExtLink.GROUP);
+                        return;
+                    }
                     host.open(pageKey, title);
                 }
             });

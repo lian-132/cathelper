@@ -180,6 +180,16 @@
                         android:textColor="#E7F0FF"
                         android:background="@drawable/bg_nav_selected" />
 
+                    <Button
+                        android:id="@+id/btn_github"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="8dp"
+                        android:text="GitHub 仓库 ＞"
+                        android:textAllCaps="false"
+                        android:textColor="#E7F0FF"
+                        android:background="@drawable/bg_nav_selected" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

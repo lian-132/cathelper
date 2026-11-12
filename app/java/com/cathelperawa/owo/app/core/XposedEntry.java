@@ -20,6 +20,7 @@ import com.cathelperawa.owo.app.feature.FeatureParse;
 import com.cathelperawa.owo.app.feature.FeatureGroupClockIn;
 import com.cathelperawa.owo.app.feature.FeatureMsgTime;
 import com.cathelperawa.owo.app.feature.FeatureViewCard;
+import com.cathelperawa.owo.app.feature.FeatureBypassArkLimit;
 import com.cathelperawa.owo.app.feature.FeatureCustomDevice;
 import com.cathelperawa.owo.app.feature.FeatureAntiDetect;
 import com.cathelperawa.owo.app.feature.QQSettingEntry;
@@ -79,6 +80,7 @@ public class XposedEntry implements IXposedHookLoadPackage {
         HookItemFactory.register(FeatureFakeQua.class);        
         HookItemFactory.register(FeatureProtoTap.class);       
         HookItemFactory.register(FeatureViewCard.class);      
+        HookItemFactory.register(FeatureBypassArkLimit.class);
         HookItemFactory.register(FeatureGroupClockIn.class);  
         HookItemFactory.register(FeatureMsgTime.class);       
         HookItemFactory.register(FeatureSenderVersion.class); 
