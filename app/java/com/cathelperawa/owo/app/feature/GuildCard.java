@@ -60,7 +60,6 @@ public final class GuildCard {
     
     private static final long SHELL_APPID = 100951776L;
     private static final String SHELL_PKG = "com.tencent.mobileqq";
-    private static final String SHELL_SIGN = "a6b745bf24a2c277527716f6f36eb68d";
     private static final long MAGIC_ID = 7538753094889419000L;
 
     public static final class Result {

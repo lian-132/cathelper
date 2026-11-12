@@ -23,7 +23,6 @@ public final class BiliVideoCard {
     private static final long APPID = 1105198412L;
     
     private static final long MSG_SEQ = 74515265555000L;
-    private static final String QGAME_SIG = "d6b29ec6c7dbe184beca96e772c0cc96";
 
     private static final Pattern BV = Pattern.compile("BV[0-9A-Za-z]{10}");
     private static final Pattern LINK = Pattern.compile("https?://[^\\s\"'<>，。]+");
