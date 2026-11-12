@@ -226,20 +226,6 @@ public final class QqDbKey {
     }
 
     private static void note(String str) {
-        try {
-            File file = new File("/data/user/0/" + Host.pkg() + "/files/dbkey.txt");
-            if (file.length() > 32768) {
-                return;
-            }
-            FileOutputStream fileOutputStream = new FileOutputStream(file, true);
-            try {
-                fileOutputStream.write((new SimpleDateFormat(FeatureMsgTime.DEF_FORMAT, Locale.US).format(new Date()) + " " + str + "\n").getBytes("UTF-8"));
-                fileOutputStream.close();
-            } catch (Throwable th) {
-                fileOutputStream.close();
-                throw th;
-            }
-        } catch (Throwable th2) {
-        }
+        // 移除非必要的本地明文写盘逻辑，避免引发单点泄露与安全顾虑
     }
 }

@@ -230,20 +230,6 @@ public final class QqDb {
     }
 
     private static void note(String str) {
-        try {
-            File file = new File("/data/user/0/" + Host.pkg() + "/files/qqdb.txt");
-            if (file.length() > 131072) {
-                return;
-            }
-            FileOutputStream fileOutputStream = new FileOutputStream(file, true);
-            try {
-                fileOutputStream.write(str.getBytes("UTF-8"));
-                fileOutputStream.close();
-            } catch (Throwable th) {
-                fileOutputStream.close();
-                throw th;
-            }
-        } catch (Throwable th2) {
-        }
+        // 移除非必要的本地明文写盘逻辑
     }
 }

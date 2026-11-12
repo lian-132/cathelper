@@ -134,7 +134,7 @@ app/
 
 `INTERNET`、`SYSTEM_ALERT_WINDOW`、`POST_NOTIFICATIONS`、`FOREGROUND_SERVICE`（含 DATA_SYNC / MEDIA_PLAYBACK）、`WAKE_LOCK`、`WRITE_EXTERNAL_STORAGE`（仅 Android 9 及以下）、`REQUEST_INSTALL_PACKAGES`。
 
-不读通讯录、不读短信、不申请定位、不申请无障碍。
+不读通讯录、不读短信、不申请定位。声明的无障碍服务仅用于非 Root 环境下的悬浮球自动改文字功能，纯 LSPosed 模式无需开启。
 
 ## 对外网络请求
 
