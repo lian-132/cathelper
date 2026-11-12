@@ -218,15 +218,15 @@ public final class ArkSigner {
 
     public static boolean openPskeyPage(Context context) { return false; }
 
-    public static PskeyResult capturePskey() { return null; }
+    public static PskeyResult capturePskey() { return new PskeyResult(false, "", "未配置签名"); }
 
-    public static PskeyResult readPskey(boolean z) { return null; }
+    public static PskeyResult readPskey(boolean z) { return new PskeyResult(false, "", "未配置签名"); }
 
-    public static PskeyResult pskeyStatus() { return null; }
+    public static PskeyResult pskeyStatus() { return new PskeyResult(false, "", "未配置签名"); }
 
     private static String minimalNewsCard() { return null; }
 
-    public static PskeyResult verifyPskey() { return null; }
+    public static PskeyResult verifyPskey() { return new PskeyResult(false, "", "未配置签名"); }
 
     public static void clearPskey() {  }
 

@@ -1299,7 +1299,8 @@ public final class SendPanel {
         android.widget.LinearLayout linearLayout20 = new android.widget.LinearLayout(activity);
         linearLayout20.setOrientation(1);
         linearLayout20.addView(tv(activity, "天玄 p_skey ▸", 12, -9530410, true));
-        final android.widget.TextView tv8 = tv(activity, com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus().msg, 10, C_SUB, false);
+        com.cathelperawa.owo.app.feature.ArkSigner.PskeyResult initialPskey = com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus();
+        final android.widget.TextView tv8 = tv(activity, initialPskey != null && initialPskey.msg != null ? initialPskey.msg : "未配置签名", 10, C_SUB, false);
         linearLayout20.addView(tv8);
         linearLayout19.addView(linearLayout20, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
         linearLayout19.setOnClickListener(new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass26(activity, tv8));
@@ -1315,7 +1316,8 @@ public final class SendPanel {
                 boolean z2 = signOn2 && com.cathelperawa.owo.app.feature.ArkSigner.CH_TIANXUAN.equals(signChannel);
                 linearLayout19.setVisibility(z2 ? 0 : 8);
                 if (z2) {
-                    tv8.setText(com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus().msg);
+                    com.cathelperawa.owo.app.feature.ArkSigner.PskeyResult curPskey = com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus();
+                    tv8.setText(curPskey != null && curPskey.msg != null ? curPskey.msg : "未配置签名");
                 }
             }
         };
