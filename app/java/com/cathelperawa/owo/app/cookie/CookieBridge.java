@@ -179,22 +179,8 @@ public final class CookieBridge {
     }
 
     private static boolean doWake() {
-        try {
-            Context ctx = QQEnv.appContext();
-            if (ctx == null) return false;
-            Intent it = new Intent();
-            it.setClassName(HOST_PKG, HOST_PKG + ".cookie.CookieWarmupActivity");
-            it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(it);
-            try {
-                Thread.sleep(WAKE_WAIT_MS);
-            } catch (Throwable ignore) {
-            }
-            return true;
-        } catch (Throwable t) {
-            HookLog.w("CookieBridge 唤醒本体失败：" + t);
-            return false;
-        }
+        // 彻底禁用跨进程唤醒，避免触发 HyperOS 应用关联启动拦截弹窗
+        return false;
     }
 
     

@@ -249,37 +249,7 @@ public class FeatureSendProto extends HookItemBase {
     }
 
     private void hookDispatch() {
-        if (dispHooked) return;
-        dispHooked = true;
-        
-        try {
-            java.lang.reflect.Method am = android.app.Activity.class
-                    .getDeclaredMethod("dispatchTouchEvent", android.view.MotionEvent.class);
-            am.setAccessible(true);
-            HookApi.before(am, new HookApi.Action() {
-                @Override public void call(XC_MethodHook.MethodHookParam p) {
-                    handleTouch(p.thisObject, p.args);
-                }
-            });
-            dbg("Activity 分发层已挂");
-        } catch (Throwable t) {
-            dbg("Activity 分发层失败 " + t);
-        }
-        try {
-            java.lang.reflect.Method m = android.view.ViewGroup.class
-                    .getDeclaredMethod("dispatchTouchEvent", android.view.MotionEvent.class);
-            m.setAccessible(true);
-            HookApi.before(m, new HookApi.Action() {
-                @Override public void call(XC_MethodHook.MethodHookParam p) {
-                    if (p.thisObject instanceof android.view.ViewGroup) {
-                        handleTouch(p.thisObject, p.args);
-                    }
-                }
-            });
-            dbg("分发层长按兜底已挂");
-        } catch (Throwable t) {
-            dbg("分发层长按兜底失败 " + t);
-        }
+        // 彻底停用全局分发层 touch 兜底，避免与 HyperOS 传送门及全局手势冲突产生无界误触
     }
 
     private void handleTouch(Object host, Object[] args) {
@@ -367,22 +337,31 @@ public class FeatureSendProto extends HookItemBase {
             HOOKED.put(plus, Boolean.TRUE);
         }
         plus.setOnLongClickListener(l);
-        if (!WATCH.contains(plus)) WATCH.add(plus);
-        hookDispatch();
 
         try {
             plus.setOnTouchListener(new View.OnTouchListener() {
                 private long downAt;
+                private float downX, downY;
+                private boolean moved;
+
                 @Override public boolean onTouch(View v, android.view.MotionEvent e) {
                     switch (e.getActionMasked()) {
                         case android.view.MotionEvent.ACTION_DOWN:
                             downAt = System.currentTimeMillis();
+                            downX = e.getX();
+                            downY = e.getY();
+                            moved = false;
                             return false;   
+                        case android.view.MotionEvent.ACTION_MOVE:
+                            if (Math.hypot(e.getX() - downX, e.getY() - downY) > 25) {
+                                moved = true;
+                            }
+                            return false;
                         case android.view.MotionEvent.ACTION_UP:
-                            
                             if (LONG_FIRED.remove(v) != null) return true;
                             long dt = System.currentTimeMillis() - downAt;
-                            if (dt >= 600) {
+                            // 必须无滑动且长按达到 800ms
+                            if (!moved && dt >= 800) {
                                 try {
                                     if (!on()) return false;
                                     fire();
@@ -418,6 +397,7 @@ public class FeatureSendProto extends HookItemBase {
         List<View> all = new ArrayList<View>();
         collect(root, all);
 
+        // 1. 优先匹配明确是加号/更多/扩展的按钮，并严密排除发送/语音/表情/相册
         for (int i = 0; i < all.size(); i++) {
             View v = all.get(i);
             if (!clickable(v)) continue;
@@ -425,8 +405,7 @@ public class FeatureSendProto extends HookItemBase {
             if (cd == null) continue;
             String s = cd.toString().toLowerCase(Locale.US);
             
-            if (s.contains("发送") || s.contains("send") || s.contains("语音")
-                    || s.contains("voice") || s.contains("表情")) {
+            if (isForbiddenButton(s, v)) {
                 continue;
             }
             if (s.contains("更多") || s.contains("more") || s.contains("plus")
@@ -435,12 +414,19 @@ public class FeatureSendProto extends HookItemBase {
             }
         }
 
+        // 2. 兜底匹配最右侧候选，但必须严格杜绝命中发送键/语音键/表情键
         View best = null;
         int bestLeft = -1;
         for (int i = 0; i < all.size(); i++) {
             View v = all.get(i);
             if (v == et || !clickable(v)) continue;
             if (!(v instanceof ImageView) && !isButtonLike(v)) continue;
+
+            CharSequence cd = v.getContentDescription();
+            String s = cd == null ? "" : cd.toString().toLowerCase(Locale.US);
+            if (isForbiddenButton(s, v)) {
+                continue;
+            }
 
             Rect r = new Rect();
             if (!v.getGlobalVisibleRect(r)) continue;
@@ -454,6 +440,25 @@ public class FeatureSendProto extends HookItemBase {
             }
         }
         return best;
+    }
+
+    private boolean isForbiddenButton(String desc, View v) {
+        if (desc != null && (desc.contains("发送") || desc.contains("send") || desc.contains("语音")
+                || desc.contains("voice") || desc.contains("表情") || desc.contains("相册")
+                || desc.contains("拍照") || desc.contains("红包") || desc.contains("图片"))) {
+            return true;
+        }
+        int id = v.getId();
+        if (id != View.NO_ID && v.getResources() != null) {
+            try {
+                String resName = v.getResources().getResourceEntryName(id).toLowerCase(Locale.US);
+                if (resName.contains("send") || resName.contains("ptt") || resName.contains("voice")
+                        || resName.contains("face") || resName.contains("emotion")) {
+                    return true;
+                }
+            } catch (Throwable ignore) {}
+        }
+        return false;
     }
 
     private boolean isButtonLike(View v) {

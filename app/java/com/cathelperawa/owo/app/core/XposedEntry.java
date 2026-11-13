@@ -459,30 +459,7 @@ public class XposedEntry implements IXposedHookLoadPackage {
     }
 
     private void probeCookieBridge() {
-        try {
-            Thread t = new Thread(new Runnable() {
-                @Override public void run() {
-                    try { Thread.sleep(6000); } catch (Throwable ignore) { }
-                    try {
-                        String n = com.cathelperawa.owo.app.cookie.CookieBridge.get("netease");
-                        String b = com.cathelperawa.owo.app.cookie.CookieBridge.get("bilibili");
-                        int nl = (n == null) ? -1 : n.length();
-                        int bl = (b == null) ? -1 : b.length();
-                        String msg = "Cookie 通道: netease=" + nl + " bilibili=" + bl;
-                        HookLog.i(msg);
-                        try {
-                            com.cathelperawa.owo.app.ai.AiDebug.log("  · " + msg);
-                        } catch (Throwable ignore) {
-                        }
-                    } catch (Throwable e) {
-                        HookLog.w("Cookie 通道自检失败: " + e);
-                    }
-                }
-            }, "cat-cookie-probe");
-            t.setDaemon(true);
-            t.start();
-        } catch (Throwable ignore) {
-        }
+        // 彻底禁用后台探针唤醒，静默运行
     }
 
     
