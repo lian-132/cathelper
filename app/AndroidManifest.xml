@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cathelperawa.owo.app"
+    android:versionCode="1466"
+    android:versionName="2.13.31-public">
+
+    <!-- Android 11+ 包可见性：不声明就查不到 LSPosed Manager，拿不到框架版本号 -->
+    <queries>
+        <package android:name="org.lsposed.manager" />
+        <package android:name="org.lsposed.lspatch" />
+        <package android:name="com.tencent.tim" />
+    </queries>
+
+    <!-- 悬浮窗权限（无障碍服务的 BIND 权限由 <service android:permission> 声明，不在此列） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- ★ 2026-10-23：本体进程需要联网 —— 网页登录提 Cookie 后的登录态校验、
+         联网搜索「测一下」都跑在本体（模块侧走的是 TIM 的权限，本来就有）。
+         缺这条时 HttpURLConnection 会直接失败（表现为「HTTP 0」）。 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 网盘文件落到公共 Download/ 目录：Android 9 及以下才需要这条 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- ★ 2026-10-23 音乐前台服务：后台播放不被系统清理 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- ★ 2026-10-27 网盘下载前台服务：dataSync 类型（Android 14+ 必须单独申请）+ 熄屏不停 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- ★ 2026-10-27 下载完点「打开」装 APK：没有这条，系统安装器会拒绝本应用发起的安装（点了没反应） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true"
+        android:label="猫娘助手"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.CatHelper">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="猫娘助手 · TIM/QQ 猫娘化模块（LSPosed）" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="93" />
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
+
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="猫娘助手">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- ★ 2026-10-23：ColorOS 的「默认音乐应用」列表其实按「能打开音频文件」筛的
+                 （列表里 QQ / TIM / MT管理器 / WPS 都在，都是声明了 VIEW audio/*）。
+                 加上这段，本应用才会出现在那个列表里。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+
+            <!-- ★ 2026-10-23 声明为「音乐应用」：系统设置 → 默认应用 → 音乐 里就能选到本应用。
+                 被这样拉起时（语音助手「播放音乐」、启动器音乐键等）MainActivity 会直接进聚合中心。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".CustomStyleActivity"
+            android:exported="false" />
+
+        <!-- ★ 2026-10-23 网页登录页（Cookie 提取）：桌面 App 内打开官网登录，
+             登录态存 filesDir/cookies.json，再由 .cookie.CookieProvider 交给 TIM 里的模块 -->
+        <!-- ★ 2026-10-23 暖场页：TIM 里的模块读不到 Cookie 时拉起本 App 进程，
+             透明、立即 finish，只为让 CookieProvider 可用（绕开 ColorOS 的后台启动拦截） -->
+        <activity
+            android:name=".cookie.CookieWarmupActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
+            android:name=".cookie.CookieLoginActivity"
+            android:exported="false"
+            android:label="网页登录"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.CatHelper" />
+
+        <!-- ★ 2026-10-23 B 站独立界面：自己的搜索条/底部三 tab/全屏播放，
+             不嵌在 MainActivity 的壳里（见 可行性文档 第9章）。
+             configChanges 防止转屏重建（全屏播放时自己切横屏）。 -->
+        <activity
+            android:name=".bili.BiliActivity"
+            android:exported="true"
+            android:label="哔哩哔哩"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.CatHelper" />
+
+        <!-- ★ 2026-10-26 网盘下载：粘分享链接 → 取直链 → 系统下载（夸克 / UC） -->
+        <activity
+            android:name=".pan.PanActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:label="网盘下载"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.CatHelper" />
+
+
+        <activity
+            android:name=".ConsoleActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:label="猫娘助手"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.CatHelper" />
+
+        <!-- ★ 2026-10-21 AI 独立控制台：TIM 设置页「猫娘 AI」入口 -->
+        <activity
+            android:name=".ai.AiActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:label="猫娘 AI"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.CatHelper" />
+
+        <service
+            android:name=".QQAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".FloatWindowService"
+            android:exported="false" />
+
+        <!-- 模块跑在 TIM 进程（另一个 uid），靠这个 Provider 把日志写回本应用。
+             ★ 安全加固（2026-10-15）：真正的防线是 LogProvider.isAllowedCaller()
+               的**代码层白名单**（按包名动态查 uid 比对 Binder.getCallingUid()），
+               已实测拦得住外部 App（shell uid 2000 被拒，fail 目录零文件）。
+             ⚠️ exported 必须保持 true，**不能改 false**。实测教训：
+               TIM 日志来自多个子进程（如 :MSF），而 Parasitics 对
+               PackageManager.resolveContentProvider 的伪造**只在主进程生效**，
+               子进程照样走系统真实 PMS → 改 false 会让子进程写入被拦，
+               日志回传通道断掉（实测 SecurityException: not exported from UID ...）。 -->
+        <!-- ★ 2026-10-23 媒体浏览服务：不少 ROM 用它来判定「这是音乐应用」，
+             没有它，设置 → 默认应用 → 音乐 里可能根本不列本应用 -->
+        <!-- ★ 2026-10-23 音乐播放前台服务（常驻通知，保后台不被杀） -->
+        <!-- ★ 2026-10-27 网盘下载前台服务：退出应用 / 熄屏后继续下载，通知栏显示进度+速度 -->
+        <service
+            android:name=".pan.PanDlService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".cookie.MusicPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".cookie.MusicBrowserService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name=".LogProvider"
+            android:authorities="com.cathelperawa.owo.app.logs"
+            android:exported="true" />
+
+        <!-- ★ 2026-10-23 Cookie 读取通道（本体 → TIM 进程里的模块）。
+             两个进程 uid 不同（10423 / 10395），文件与 SP 都跨不过去，只能走 Binder。
+             安全防线与 LogProvider 一致：exported 保持 true（子进程走真实 PMS），
+             真正的门是 CookieProvider.isAllowedCaller() 的包名 → uid 白名单。 -->
+        <provider
+            android:name=".cookie.CookieProvider"
+            android:authorities="com.cathelperawa.owo.app.cookie"
+            android:exported="true" />
+
+        <!-- 诊断包分享：只暴露 cache/bugreport，不暴露其它私有目录 -->
+        <provider
+            android:name=".core.ReportProvider"
+            android:authorities="com.cathelperawa.owo.app.report"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+    </application>
+</manifest>

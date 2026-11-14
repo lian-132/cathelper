@@ -1,0 +1,11 @@
+# 构建产物
+build/
+*.apk
+
+# 本地构建配置（含签名口令）
+toolchain.env
+
+# 签名密钥
+密钥/
+*.jks
+*.keystore
