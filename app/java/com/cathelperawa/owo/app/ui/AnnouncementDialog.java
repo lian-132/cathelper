@@ -13,6 +13,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.List;
+
 public final class AnnouncementDialog {
 
     private static final int C_TITLE = 0xFF43587A;
@@ -36,6 +38,25 @@ public final class AnnouncementDialog {
 
     public static void show(final Activity a, String title, String body, String imageUrl,
                             String okLabel, final OnOk onOk, final Runnable onClose) {
+        java.util.ArrayList<NoticePagerDialog.Btn> one =
+                new java.util.ArrayList<NoticePagerDialog.Btn>();
+        NoticePagerDialog.Btn b = new NoticePagerDialog.Btn();
+        b.label = okLabel == null || okLabel.length() == 0 ? "去看看" : okLabel;
+        if (onOk != null) {
+            b.action = new Runnable() {
+                @Override public void run() {
+                    try { onOk.run(); } catch (Throwable ignore) {}
+                }
+            };
+        }
+        one.add(b);
+        showWithButtons(a, title, body, imageUrl, one, onClose);
+    }
+
+    public static void showWithButtons(final Activity a, String title, String body,
+                                       String imageUrl,
+                                       final List<NoticePagerDialog.Btn> buttons,
+                                       final Runnable onClose) {
         if (a == null || a.isFinishing()) return;
         final float d = a.getResources().getDisplayMetrics().density;
         final Dialog dlg = new Dialog(a, android.R.style.Theme_Translucent_NoTitleBar);
@@ -126,8 +147,9 @@ public final class AnnouncementDialog {
         sv.addView(tvBody, new FrameLayout.LayoutParams(-1, -2));
         card.addView(sv, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout btns = new LinearLayout(a);
-        btns.setOrientation(LinearLayout.HORIZONTAL);
+        int n = buttons == null ? 0 : buttons.size();
+        final LinearLayout btns = new LinearLayout(a);
+        btns.setOrientation(n <= 1 ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
 
         TextView cancel = new TextView(a);
         cancel.setText("取消");
@@ -146,32 +168,52 @@ public final class AnnouncementDialog {
             }
         });
 
-        TextView go = new TextView(a);
-        go.setText(okLabel == null || okLabel.length() == 0 ? "去看看" : okLabel);
-        go.setTextSize(14);
-        go.setTypeface(Typeface.DEFAULT_BOLD);
-        go.setTextColor(0xFFFFFFFF);
-        go.setGravity(Gravity.CENTER);
-        go.setPadding(0, dp(d, 11), 0, dp(d, 11));
-        GradientDrawable gbg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFFF58FBC, 0xFFF07AAE});
-        gbg.setCornerRadius(dp(d, 14));
-        go.setBackgroundDrawable(gbg);
-        go.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                try { dlg.dismiss(); } catch (Throwable ignore) {}
-                if (onOk != null) {
-                    try { onOk.run(); } catch (Throwable ignore) {}
-                }
-            }
-        });
+        if (n <= 1) {
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2,
+                    n == 1 ? 1f : 2f);
+            if (n == 1) cp.rightMargin = dp(d, 6);
+            btns.addView(cancel, cp);
+        }
 
-        LinearLayout.LayoutParams bp1 = new LinearLayout.LayoutParams(0, -2, 1f);
-        bp1.rightMargin = dp(d, 6);
-        LinearLayout.LayoutParams bp2 = new LinearLayout.LayoutParams(0, -2, 1f);
-        bp2.leftMargin = dp(d, 6);
-        btns.addView(cancel, bp1);
-        btns.addView(go, bp2);
+        for (int i = 0; i < n; i++) {
+            final NoticePagerDialog.Btn src = buttons.get(i);
+            if (src == null) continue;
+            TextView go = new TextView(a);
+            go.setText(src.label == null || src.label.length() == 0 ? "打开" : src.label);
+            go.setTextSize(14);
+            go.setTypeface(Typeface.DEFAULT_BOLD);
+            go.setTextColor(0xFFFFFFFF);
+            go.setGravity(Gravity.CENTER);
+            go.setPadding(0, dp(d, 11), 0, dp(d, 11));
+            GradientDrawable gbg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xFFF58FBC, 0xFFF07AAE});
+            gbg.setCornerRadius(dp(d, 14));
+            go.setBackgroundDrawable(gbg);
+            go.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    try { dlg.dismiss(); } catch (Throwable ignore) {}
+                    if (src.action != null) {
+                        try { src.action.run(); } catch (Throwable ignore) {}
+                    }
+                }
+            });
+            LinearLayout.LayoutParams gp;
+            if (n <= 1) {
+                gp = new LinearLayout.LayoutParams(0, -2, 1f);
+                gp.leftMargin = dp(d, 6);
+            } else {
+                gp = new LinearLayout.LayoutParams(-1, -2);
+                gp.bottomMargin = dp(d, 8);
+            }
+            btns.addView(go, gp);
+        }
+
+        if (n > 1) {
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+            cp.topMargin = dp(d, 2);
+            btns.addView(cancel, cp);
+        }
+
         LinearLayout.LayoutParams btlp = new LinearLayout.LayoutParams(-1, -2);
         btlp.topMargin = dp(d, 18);
         card.addView(btns, btlp);

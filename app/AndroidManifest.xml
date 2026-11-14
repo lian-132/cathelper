@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cathelperawa.owo.app"
-    android:versionCode="1466"
-    android:versionName="2.13.31-public">
+    android:versionCode="1498"
+    android:versionName="2.13.36-public">
 
     <!-- Android 11+ 包可见性：不声明就查不到 LSPosed Manager，拿不到框架版本号 -->
     <queries>

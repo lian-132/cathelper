@@ -18,6 +18,7 @@ import com.cathelperawa.owo.app.feature.FeatureSendProto;
 import com.cathelperawa.owo.app.feature.FeatureParse;
 import com.cathelperawa.owo.app.feature.FeatureGroupClockIn;
 import com.cathelperawa.owo.app.feature.FeatureMsgTime;
+import com.cathelperawa.owo.app.feature.FeatureSenderVersion;
 import com.cathelperawa.owo.app.feature.FeatureViewCard;
 import com.cathelperawa.owo.app.feature.FeatureCustomDevice;
 import com.cathelperawa.owo.app.feature.FeatureAntiDetect;
@@ -82,6 +83,7 @@ public class XposedEntry implements IXposedHookLoadPackage {
         HookItemFactory.register(FeatureViewCard.class);
         HookItemFactory.register(FeatureGroupClockIn.class);
         HookItemFactory.register(FeatureMsgTime.class);
+        HookItemFactory.register(FeatureSenderVersion.class); // 显示发送者版本号
         HookItemFactory.register(FeatureApkRename.class);
         HookItemFactory.register(FeatureGroupMenu.class);
         HookItemFactory.register(AiHook.class);

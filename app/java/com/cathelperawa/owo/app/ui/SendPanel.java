@@ -638,105 +638,6 @@ public final class SendPanel {
         layoutParams13.bottomMargin = i7;
         linearLayout.addView(linearLayout5, layoutParams13);
         final java.lang.Runnable[] runnableArr = new java.lang.Runnable[1];
-        final android.widget.LinearLayout linearLayout6 = new android.widget.LinearLayout(activity);
-        linearLayout6.setOrientation(1);
-        linearLayout6.addView(groupLabel(activity, "快捷卡片 · 点开填表，签完直接发"), groupLp(f));
-        android.widget.LinearLayout linearLayout7 = new android.widget.LinearLayout(activity);
-        linearLayout7.setOrientation(0);
-        linearLayout7.setGravity(16);
-        android.widget.TextView ghost7 = ghost(activity, "定位 0");
-        ghost7.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("先在聊天里点开一个会话喵");
-                    return;
-                }
-                java.lang.String locationTemplate = com.cathelperawa.owo.app.ui.SendPanel.locationTemplate();
-                if (locationTemplate == null) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("定位模板构造失败");
-                } else {
-                    com.cathelperawa.owo.app.ui.ArkSkinSheet.open(activity, locationTemplate, "发到当前会话", new com.cathelperawa.owo.app.ui.ArkSkinSheet.OnDone() {
-                        @Override
-                        public void run(java.lang.String str9) {
-                            com.cathelperawa.owo.app.ui.SendPanel.sendCode(str9, activity);
-                        }
-                    });
-                }
-            }
-        });
-        android.widget.LinearLayout.LayoutParams layoutParams14 = new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f);
-        int i13 = (int) (f * 6.0f);
-        layoutParams14.rightMargin = i13;
-        linearLayout7.addView(ghost7, layoutParams14);
-        android.widget.TextView ghost8 = ghost(activity, "新建卡");
-        ghost8.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("先在聊天里点开一个会话喵");
-                } else {
-                    com.cathelperawa.owo.app.ui.CardFormSheet.open(activity, new com.cathelperawa.owo.app.ui.CardFormSheet.OnDone() {
-                        @Override
-                        public void run(java.lang.String str9, java.lang.String str10, java.lang.String str11, java.lang.String str12, java.lang.String str13, java.lang.String str14) {
-                            java.lang.String build = com.cathelperawa.owo.app.ui.CardFormSheet.build(str9, str10, str11, str12, str13, str14);
-                            if (build == null) {
-                                com.cathelperawa.owo.app.bridge.CatToast.show("构造失败喵");
-                                return;
-                            }
-                            editText.setText(build);
-
-                            if (com.cathelperawa.owo.app.ui.SendPanel.arkSignOn(activity)) {
-                                com.cathelperawa.owo.app.ui.SendPanel.signAndSend(build, activity);
-                            } else {
-                                com.cathelperawa.owo.app.ui.SendPanel.sendCode(build, activity);
-                            }
-                        }
-                    });
-                }
-            }
-        });
-        android.widget.LinearLayout.LayoutParams layoutParams15 = new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f);
-        layoutParams15.rightMargin = i13;
-        linearLayout7.addView(ghost8, layoutParams15);
-        android.widget.TextView ghost9 = ghost(activity, "伪记录");
-        ghost9.setOnClickListener(new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass15(activity));
-        android.widget.LinearLayout.LayoutParams layoutParams16 = new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f);
-        layoutParams16.rightMargin = i13;
-        linearLayout7.addView(ghost9, layoutParams16);
-        android.widget.LinearLayout linearLayout8 = new android.widget.LinearLayout(activity);
-        linearLayout8.setOrientation(0);
-        linearLayout8.setGravity(16);
-        android.widget.TextView ghost10 = ghost(activity, "音乐卡");
-        ghost10.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("先在聊天里点开一个会话喵");
-                } else {
-                    com.cathelperawa.owo.app.ui.MusicCardSheet.open(activity, new com.cathelperawa.owo.app.ui.MusicCardSheet.OnDone() {
-                        @Override
-                        public void run(com.cathelperawa.owo.app.ui.MusicCardSheet.Params params) {
-                            com.cathelperawa.owo.app.ui.SendPanel.sendMusicCardForm(activity, params);
-                        }
-                    });
-                }
-            }
-        });
-        android.widget.LinearLayout.LayoutParams layoutParams17 = new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f);
-        layoutParams17.rightMargin = i13;
-        linearLayout8.addView(ghost10, layoutParams17);
-        android.widget.TextView ghost11 = ghost(activity, "名片");
-        ghost11.setOnClickListener(new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17(activity, editText, iArr, runnableArr));
-        linearLayout8.addView(ghost11, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
-        android.widget.TextView ghost12 = ghost(activity, "小程序");
-        ghost12.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                com.cathelperawa.owo.app.ui.SendPanel.openMiniShare(activity);
-            }
-        });
-        linearLayout8.addView(ghost12, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
         final android.widget.LinearLayout linearLayout9 = new android.widget.LinearLayout(activity);
         linearLayout9.setOrientation(1);
         linearLayout9.addView(groupLabel(activity, "快捷报文 · 点开填表，直接发"), groupLp(f));
@@ -771,19 +672,13 @@ public final class SendPanel {
                 }
             }
         });
+        int i13 = (int) (f * 6.0f);
         android.widget.LinearLayout.LayoutParams layoutParams19 = new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f);
         layoutParams19.rightMargin = i13;
         linearLayout10.addView(ghost14, layoutParams19);
         linearLayout9.addView(linearLayout10, new android.widget.LinearLayout.LayoutParams(-1, -2));
         linearLayout9.setVisibility(8);
         linearLayout.addView(linearLayout9, new android.widget.LinearLayout.LayoutParams(-1, -2));
-        linearLayout6.addView(linearLayout7, new android.widget.LinearLayout.LayoutParams(-1, -2));
-        android.widget.LinearLayout.LayoutParams layoutParams21 = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        layoutParams21.topMargin = i13;
-        linearLayout6.addView(linearLayout8, layoutParams21);
-        android.widget.LinearLayout.LayoutParams layoutParams22 = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        layoutParams22.bottomMargin = i13;
-        linearLayout.addView(linearLayout6, layoutParams22);
         final android.widget.TextView textView3 = new android.widget.TextView(activity);
         textView3.setText("发送到当前会话");
         textView3.setTextSize(15.0f);
@@ -945,131 +840,6 @@ public final class SendPanel {
         android.widget.LinearLayout.LayoutParams layoutParams25 = new android.widget.LinearLayout.LayoutParams(-1, -2);
         layoutParams25.bottomMargin = i15;
         linearLayout.addView(linearLayout13, layoutParams25);
-        boolean signOn = signOn(activity);
-        final android.widget.LinearLayout linearLayout15 = new android.widget.LinearLayout(activity);
-        linearLayout15.setOrientation(0);
-        linearLayout15.setGravity(16);
-        linearLayout15.setPadding(i4, i15, i7, i15);
-        android.graphics.drawable.GradientDrawable gradientDrawable7 = new android.graphics.drawable.GradientDrawable();
-        gradientDrawable7.setCornerRadius(f4);
-        gradientDrawable7.setColor(-1929379841);
-        gradientDrawable7.setStroke(i5, 1439291112);
-        linearLayout15.setBackgroundDrawable(gradientDrawable7);
-        android.widget.LinearLayout linearLayout16 = new android.widget.LinearLayout(activity);
-        linearLayout16.setOrientation(1);
-        linearLayout16.addView(tv(activity, "签名", 12, C_TITLE, true));
-        if (signOn) {
-            str4 = "开：发前请服务签 token（别人能看到）";
-        } else {
-            str4 = "关：原样发，什么签名都不走";
-        }
-        final android.widget.TextView tv5 = tv(activity, str4, 10, C_SUB, false);
-        linearLayout16.addView(tv5);
-        linearLayout15.addView(linearLayout16, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
-        final android.widget.LinearLayout linearLayout17 = new android.widget.LinearLayout(activity);
-        linearLayout17.setOrientation(0);
-        linearLayout17.setGravity(16);
-        linearLayout17.setPadding(i4, i15, i7, i15);
-        android.graphics.drawable.GradientDrawable gradientDrawable8 = new android.graphics.drawable.GradientDrawable();
-        gradientDrawable8.setCornerRadius(f4);
-        gradientDrawable8.setColor(-1929379841);
-        gradientDrawable8.setStroke(i5, 1439291112);
-        linearLayout17.setBackgroundDrawable(gradientDrawable8);
-        android.widget.LinearLayout linearLayout18 = new android.widget.LinearLayout(activity);
-        linearLayout18.setOrientation(1);
-        final android.widget.TextView tv6 = tv(activity, "签名通道 · " + com.cathelperawa.owo.app.feature.ArkSigner.channelShort(signChannel(activity)) + " ▸", 12, -9530410, true);
-        linearLayout18.addView(tv6);
-        final android.widget.TextView tv7 = tv(activity, com.cathelperawa.owo.app.feature.ArkSigner.channelLabel(signChannel(activity)), 10, C_SUB, false);
-        linearLayout18.addView(tv7);
-        linearLayout17.addView(linearLayout18, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
-        final android.widget.LinearLayout linearLayout19 = new android.widget.LinearLayout(activity);
-        linearLayout19.setOrientation(0);
-        linearLayout19.setGravity(16);
-        linearLayout19.setPadding(i4, i15, i7, i15);
-        android.graphics.drawable.GradientDrawable gradientDrawable9 = new android.graphics.drawable.GradientDrawable();
-        gradientDrawable9.setCornerRadius(f4);
-        gradientDrawable9.setColor(-1929379841);
-        gradientDrawable9.setStroke(i5, 1439291112);
-        linearLayout19.setBackgroundDrawable(gradientDrawable9);
-        android.widget.LinearLayout linearLayout20 = new android.widget.LinearLayout(activity);
-        linearLayout20.setOrientation(1);
-        linearLayout20.addView(tv(activity, "天玄 p_skey ▸", 12, -9530410, true));
-        final android.widget.TextView tv8 = tv(activity, com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus().msg, 10, C_SUB, false);
-        linearLayout20.addView(tv8);
-        linearLayout19.addView(linearLayout20, new android.widget.LinearLayout.LayoutParams(0, -2, 1.0f));
-        linearLayout19.setOnClickListener(new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass26(activity, tv8));
-        final java.lang.Runnable runnable = new java.lang.Runnable() {
-            @Override
-            public void run() {
-                boolean signOn2 = com.cathelperawa.owo.app.ui.SendPanel.signOn(activity);
-                java.lang.String signChannel = com.cathelperawa.owo.app.ui.SendPanel.signChannel(activity);
-                tv6.setText("签名通道 · " + com.cathelperawa.owo.app.feature.ArkSigner.channelShort(signChannel) + " ▸");
-                tv7.setText(com.cathelperawa.owo.app.feature.ArkSigner.channelLabel(signChannel));
-                linearLayout17.setAlpha(signOn2 ? 1.0f : 0.42f);
-                linearLayout17.setEnabled(signOn2);
-                boolean z2 = signOn2 && com.cathelperawa.owo.app.feature.ArkSigner.CH_TIANXUAN.equals(signChannel);
-                linearLayout19.setVisibility(z2 ? 0 : 8);
-                if (z2) {
-                    tv8.setText(com.cathelperawa.owo.app.feature.ArkSigner.pskeyStatus().msg);
-                }
-            }
-        };
-        runnable.run();
-        final java.lang.Runnable runnable2 = new java.lang.Runnable() {
-            @Override
-            public void run() {
-                com.cathelperawa.owo.app.ui.CatSheet.pick(activity, "选签名通道", com.cathelperawa.owo.app.feature.ArkSigner.CH_LABELS, new com.cathelperawa.owo.app.ui.CatSheet.OnPick() {
-                    @Override
-                    public void run(int i18, java.lang.String str9) {
-                        java.lang.String str10 = com.cathelperawa.owo.app.feature.ArkSigner.CH_IDS[i18];
-                        com.cathelperawa.owo.app.ui.SendPanel.setSignChannel(activity, str10);
-                        runnable.run();
-                        com.cathelperawa.owo.app.bridge.CatToast.show("签名通道：" + com.cathelperawa.owo.app.feature.ArkSigner.channelShort(str10));
-                    }
-                });
-            }
-        };
-        linearLayout17.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                if (!com.cathelperawa.owo.app.ui.SendPanel.signOn(activity)) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("先把上面的签名开关打开喵");
-                } else {
-                    runnable2.run();
-                }
-            }
-        });
-        final com.cathelperawa.owo.app.ui.SwitchBox switchBox3 = new com.cathelperawa.owo.app.ui.SwitchBox(activity, signOn);
-        switchBox3.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
-                java.lang.String str9;
-                boolean z2 = !com.cathelperawa.owo.app.ui.SendPanel.signOn(activity);
-                com.cathelperawa.owo.app.ui.SendPanel.setSignOn(activity, z2);
-                switchBox3.setChecked(z2);
-                android.widget.TextView textView4 = tv5;
-                if (z2) {
-                    str9 = "开：发前请服务签 token（别人能看到）";
-                } else {
-                    str9 = "关：原样发，什么签名都不走";
-                }
-                textView4.setText(str9);
-                runnable.run();
-                if (z2) {
-                    runnable2.run();
-                }
-            }
-        });
-        linearLayout15.addView(switchBox3, new android.widget.LinearLayout.LayoutParams(i16, i17));
-        android.widget.LinearLayout.LayoutParams layoutParams26 = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        layoutParams26.bottomMargin = i15;
-        linearLayout.addView(linearLayout15, layoutParams26);
-        android.widget.LinearLayout.LayoutParams layoutParams27 = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        layoutParams27.bottomMargin = i15;
-        linearLayout.addView(linearLayout17, layoutParams27);
-        android.widget.LinearLayout.LayoutParams layoutParams28 = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        layoutParams28.bottomMargin = i15;
-        linearLayout.addView(linearLayout19, layoutParams28);
         linearLayout.addView(tv2);
         final java.lang.Runnable runnable3 = new java.lang.Runnable() {
             @Override
@@ -1083,11 +853,7 @@ public final class SendPanel {
                 editText.setVisibility(0);
                 editText2.setVisibility(z2 ? 0 : 8);
                 linearLayout11.setVisibility(z2 ? 8 : 0);
-                linearLayout6.setVisibility(z2 ? 8 : 0);
                 linearLayout9.setVisibility(z2 ? 0 : 8);
-                linearLayout15.setVisibility(z2 ? 8 : 0);
-                linearLayout17.setVisibility(z2 ? 8 : 0);
-                linearLayout19.setVisibility((!z2 && com.cathelperawa.owo.app.ui.SendPanel.signOn(activity) && com.cathelperawa.owo.app.feature.ArkSigner.CH_TIANXUAN.equals(com.cathelperawa.owo.app.ui.SendPanel.signChannel(activity))) ? 0 : 8);
                 linearLayout5.setVisibility(0);
                 android.widget.EditText editText3 = editText;
                 if (z2) {
@@ -1182,127 +948,7 @@ public final class SendPanel {
         return dialog;
     }
 
-    static class AnonymousClass15 implements android.view.View.OnClickListener {
-        final   android.app.Activity val$act;
 
-        AnonymousClass15(android.app.Activity activity) {
-            this.val$act = activity;
-        }
-
-        @Override
-        public void onClick(android.view.View view) {
-            if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
-                com.cathelperawa.owo.app.bridge.CatToast.show("先在聊天里点开一个会话喵");
-            } else {
-                com.cathelperawa.owo.app.ui.FakeChatSheet.open(this.val$act, new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass15.AnonymousClass1());
-            }
-        }
-
-        class AnonymousClass1 implements com.cathelperawa.owo.app.ui.FakeChatSheet.OnDone {
-            AnonymousClass1() {
-            }
-
-            @Override
-            public void run(java.util.List<com.cathelperawa.owo.app.proto.PbMsg.FakeItem> list, long j) {
-                com.cathelperawa.owo.app.proto.FakeChat.build(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass15.this.val$act, list, j, new com.cathelperawa.owo.app.proto.FakeChat.OnArk() {
-                    @Override
-                    public void run(java.lang.String str) {
-                        com.cathelperawa.owo.app.ui.ArkSkinSheet.open(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass15.this.val$act, str, "发到当前会话", new com.cathelperawa.owo.app.ui.ArkSkinSheet.OnDone() {
-                            @Override
-                            public void run(java.lang.String str2) {
-                                com.cathelperawa.owo.app.ui.SendPanel.sendArkJson(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass15.this.val$act, str2);
-                            }
-                        });
-                    }
-                }, new com.cathelperawa.owo.app.proto.FakeChat.OnFail() {
-                    @Override
-                    public void run(java.lang.String str) {
-                        com.cathelperawa.owo.app.bridge.CatToast.show("失败：" + str);
-                    }
-                });
-            }
-        }
-    }
-
-    static class AnonymousClass17 implements android.view.View.OnClickListener {
-        final   android.app.Activity val$act;
-        final   java.lang.Runnable[] val$applyModeRef;
-        final   android.widget.EditText val$code;
-        final   int[] val$mode;
-
-        AnonymousClass17(android.app.Activity activity, android.widget.EditText editText, int[] iArr, java.lang.Runnable[] runnableArr) {
-            this.val$act = activity;
-            this.val$code = editText;
-            this.val$mode = iArr;
-            this.val$applyModeRef = runnableArr;
-        }
-
-        class AnonymousClass1 implements com.cathelperawa.owo.app.ui.CatSheet.OnText {
-            AnonymousClass1() {
-            }
-
-            @Override
-            public void run(java.lang.String str) {
-                java.lang.String trim;
-                if (str == null) {
-                    trim = "";
-                } else {
-                    try {
-                        trim = str.trim();
-                    } catch (java.lang.Throwable th) {
-                        com.cathelperawa.owo.app.bridge.CatToast.show("QQ 号不对喵");
-                        return;
-                    }
-                }
-                long parseLong = java.lang.Long.parseLong(trim);
-                if (parseLong <= 0) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("QQ 号不对喵");
-                } else {
-                    com.cathelperawa.owo.app.ui.CatSheet.input(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$act, "跳转链接（可空）", "留空 = 官方名片跳转", "", new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.AnonymousClass1.C00501(parseLong));
-                }
-            }
-
-            class C00501 implements com.cathelperawa.owo.app.ui.CatSheet.OnText {
-                final   long val$uin;
-
-                C00501(long j) {
-                    this.val$uin = j;
-                }
-
-                @Override
-                public void run(final java.lang.String str) {
-                    com.cathelperawa.owo.app.bridge.CatToast.show("正在请服务端签名…");
-                    com.cathelperawa.owo.app.core.Bg.run(new java.lang.Runnable() {
-                        @Override
-                        public void run() {
-                            final com.cathelperawa.owo.app.feature.CardForge.Result forge = com.cathelperawa.owo.app.feature.CardForge.forge(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.AnonymousClass1.C00501.this.val$uin, str);
-                            com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$act.runOnUiThread(new java.lang.Runnable() {
-                                @Override
-                                public void run() {
-                                    if (!forge.ok()) {
-                                        com.cathelperawa.owo.app.bridge.CatToast.show("签名失败：" + forge.error);
-                                        return;
-                                    }
-                                    com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$code.setText(forge.ark);
-                                    com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$mode[0] = 0;
-                                    com.cathelperawa.owo.app.ui.SendPanel.saveMode(com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$act, 0);
-                                    if (com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$applyModeRef[0] != null) {
-                                        com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.this.val$applyModeRef[0].run();
-                                    }
-                                    com.cathelperawa.owo.app.bridge.CatToast.show("签好了，点「发送到当前会话」");
-                                }
-                            });
-                        }
-                    }, "cat-forge");
-                }
-            }
-        }
-
-        @Override
-        public void onClick(android.view.View view) {
-            com.cathelperawa.owo.app.ui.CatSheet.input(this.val$act, "代签名片 · 要展示的 QQ 号", "10001（官方号，实测可签）", "", new com.cathelperawa.owo.app.ui.SendPanel.AnonymousClass17.AnonymousClass1());
-        }
-    }
 
     static class AnonymousClass26 implements android.view.View.OnClickListener {
         final   android.app.Activity val$act;
@@ -1556,37 +1202,6 @@ public final class SendPanel {
         signAndSend(str, context);
     }
 
-    public static void sendMusicCardForm(android.content.Context context, com.cathelperawa.owo.app.ui.MusicCardSheet.Params params) {
-        if (params == null) {
-            return;
-        }
-        if (!signOn(context)) {
-            com.cathelperawa.owo.app.bridge.CatToast.show("签名已关：音乐卡不签发不出去，先把签名打开喵");
-            return;
-        }
-        if ("link".equals(params.mode)) {
-            if (!"custom".equals(params.platform)) {
-                signLinkByService(context, params.title, params.singer, params.image, params.jump, params.platform);
-                return;
-            }
-            if (params.tag.length() == 0) {
-                com.cathelperawa.owo.app.bridge.CatToast.show("自定义角标要填角标文字喵");
-                return;
-            }
-            java.lang.String build = com.cathelperawa.owo.app.ui.CardFormSheet.build(params.title, params.singer, params.image, params.jump, params.tag, params.tagIcon);
-            if (build == null) {
-                com.cathelperawa.owo.app.bridge.CatToast.show("构造失败喵");
-                return;
-            } else if (!arkSignOn(context)) {
-                sendCode(build, context);
-                return;
-            } else {
-                signAndSendNews(build, context);
-                return;
-            }
-        }
-        signMusicAndSend(context, params.title, params.singer, params.image, params.audio, params.jump, params.platform, params.tag, params.tagIcon);
-    }
 
     private static void signLinkByService(final android.content.Context context, final java.lang.String str, final java.lang.String str2, final java.lang.String str3, final java.lang.String str4, final java.lang.String str5) {
         final int chatType = com.cathelperawa.owo.app.bridge.CurrentChat.chatType();
@@ -1651,47 +1266,7 @@ public final class SendPanel {
         }, "cat-news-fb");
     }
 
-    public static void signMusicAndSend(android.content.Context context, java.lang.String str, java.lang.String str2, java.lang.String str3, java.lang.String str4, java.lang.String str5) {
-        signMusicAndSend(context, str, str2, str3, str4, str5, null, null, null);
-    }
 
-    public static void signMusicAndSend(android.content.Context context, final java.lang.String str, final java.lang.String str2, final java.lang.String str3, final java.lang.String str4, final java.lang.String str5, final java.lang.String str6, final java.lang.String str7, final java.lang.String str8) {
-        if (!com.cathelperawa.owo.app.bridge.CurrentChat.has()) {
-            com.cathelperawa.owo.app.bridge.CatToast.show("先在聊天里点开一个会话喵");
-            return;
-        }
-        final int chatType = com.cathelperawa.owo.app.bridge.CurrentChat.chatType();
-        final java.lang.String peerUid = com.cathelperawa.owo.app.bridge.CurrentChat.peerUid();
-        final boolean equals = "custom".equals(str6);
-        com.cathelperawa.owo.app.bridge.CatToast.show("音乐卡签名中…");
-        com.cathelperawa.owo.app.core.Bg.run(new java.lang.Runnable() {
-            @Override
-            public void run() {
-                try {
-                    java.lang.String str9 = str;
-                    java.lang.String str10 = str2;
-                    java.lang.String str11 = str3;
-                    java.lang.String str12 = str4;
-                    java.lang.String str13 = str5;
-                    boolean z = equals;
-                    java.lang.String signMusic = com.cathelperawa.owo.app.feature.ArkSigner.signMusic(str9, str10, str11, str12, str13, z ? null : str6, z ? str7 : null, z ? str8 : null);
-                    if (signMusic != null) {
-                        com.cathelperawa.owo.app.feature.ArkSigner.dumpSent("表单-能播放" + (str6 == null ? "" : "/" + str6), signMusic);
-                        boolean sendArkNative = com.cathelperawa.owo.app.ui.SendPanel.sendArkNative(signMusic, chatType, peerUid);
-                        if (!sendArkNative) {
-                            sendArkNative = com.cathelperawa.owo.app.proto.PbSender.sendDirect(com.cathelperawa.owo.app.ui.SendPanel.wrapArk(signMusic), chatType, peerUid);
-                        }
-                        com.cathelperawa.owo.app.bridge.CatToast.show(sendArkNative ? "音乐卡发出去了，点一下能播～" : "签名成功但发送失败，看日志喵");
-                        return;
-                    }
-                    com.cathelperawa.owo.app.bridge.CatToast.show("音乐卡签名失败，看日志喵");
-                } catch (java.lang.Throwable th) {
-                    com.cathelperawa.owo.app.core.HookLog.e("signMusicAndSend 失败", th);
-                    com.cathelperawa.owo.app.bridge.CatToast.show("发音乐卡异常：" + th);
-                }
-            }
-        }, "cat-music-card");
-    }
 
     public static void sendCode(final java.lang.String str, final android.content.Context context) {
         final int chatType = com.cathelperawa.owo.app.bridge.CurrentChat.chatType();

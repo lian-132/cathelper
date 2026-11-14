@@ -39,11 +39,46 @@ public class FeatureMsgTime extends HookItemBase {
 
     public static final String K_SIZE = "chat_msgtime_size";
 
+    public static final String K_VER = "chat_msgtime_version";
+
+    public static final String K_VER_LAYOUT = "chat_msgtime_ver_layout";
+
+    public static final String K_VER_SIZE = "chat_msgtime_ver_size";
+
+    public static final String K_MANUAL = "chat_msgtime_manual";
+
+    private static final java.util.Map<Long, String> MANUAL =
+            new java.util.concurrent.ConcurrentHashMap<Long, String>();
+    private static boolean manualLoaded = false;
+
+    private static final java.util.Map<View, Boolean> LONG_HOOKED =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<View, Boolean>());
+
     public static final String DEF_COLOR = String.valueOf(0xFF0000FF);
     public static final String DEF_FORMAT = "HH:mm:ss";
     public static final String DEF_SIZE = "10";
 
+    private static boolean pbDumped = false;
+
+    private static final java.util.Map<String, Long> SUB_CACHE =
+            java.util.Collections.synchronizedMap(
+                    new java.util.LinkedHashMap<String, Long>(512, 0.75f, false) {
+                        @Override
+                        protected boolean removeEldestEntry(
+                                java.util.Map.Entry<String, Long> e) {
+                            return size() > 4000;
+                        }
+                    });
+    private static boolean recDumped = false;
+    private static boolean diagDone = false;
+
     private static final String TAG_WRAP = "cathelper_time_wrap";
+    private static final String TAG_CONTENT = "cathelper_time_content";
+    private static final String TAG_T = "cathelper_time_t";
+    private static final String TAG_V = "cathelper_time_v";
+
+    private static final java.util.Map<View, String> BOX_MODE =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<View, String>());
     private static final String TAG_TIME = "cathelper_time_text";
 
     private static final String CLS_VB = "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB";
@@ -57,6 +92,178 @@ public class FeatureMsgTime extends HookItemBase {
         return K;
     }
 
+    private void hookMsgPush(ClassLoader cl) {
+        try {
+            Class<?> h = HookApi.findClass(cl, "mqq.app.msghandle.MsgRespHandler");
+            if (h == null) {
+                HookLog.i("版本号: 未找到 MsgRespHandler");
+                return;
+            }
+            int n = 0;
+            for (final Method m : h.getDeclaredMethods()) {
+                if (!"dispatchRespMsg".equals(m.getName())) continue;
+                hookBefore(m, new HookApi.Action() {
+                    @Override
+                    public void call(de.robv.android.xposed.XC_MethodHook.MethodHookParam p) {
+                        try {
+                            if (!verOn()) return;
+                            Object fromMsg = null;
+                            Object[] args = p.args;
+                            if (args != null && args.length >= 2 && args[1] != null) {
+                                fromMsg = Refl.field(args[1], "fromServiceMsg");
+                            }
+                            if (fromMsg == null && args != null) {
+                                for (int i = 0; i < args.length; i++) {
+                                    Object a = args[i];
+                                    if (a != null
+                                            && a.getClass().getName().contains("FromServiceMsg")) {
+                                        fromMsg = a;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (fromMsg == null) return;
+                            Object cmdO = Refl.call(fromMsg, "getServiceCmd");
+                            String cmd = cmdO instanceof String ? (String) cmdO : null;
+                            if (cmd == null || !cmd.contains("MsgPush")) return;
+                            Object wb = Refl.call(fromMsg, "getWupBuffer");
+                            if (!(wb instanceof byte[])) return;
+                            parsePush((byte[]) wb);
+                        } catch (Throwable t) {
+
+                        }
+                    }
+                });
+                n++;
+            }
+            HookLog.i("版本号: MsgPush 钩子 × " + n);
+        } catch (Throwable t) {
+            HookLog.e("版本号: 挂 MsgPush 失败", t);
+        }
+    }
+
+    private static void parsePush(byte[] raw) {
+        try {
+            com.cathelperawa.owo.app.ovo.FunProtoData d =
+                    new com.cathelperawa.owo.app.ovo.FunProtoData();
+            d.fromBytes(com.cathelperawa.owo.app.ovo.FunProtoData.getUnpPackage(raw));
+            org.json.JSONObject j = d.toJSON();
+            if (!pbDumped) {
+                pbDumped = true;
+                String js = j.toString(2);
+                HookLog.i("PBDUMP[" + js.length() + "] "
+                        + js.substring(0, Math.min(2800, js.length())));
+            }
+            collect(j);
+        } catch (Throwable t) {
+            HookLog.e("版本号: 解析推送失败", t);
+        }
+    }
+
+    private static void collect(org.json.JSONObject j) {
+        if (j == null) return;
+        try {
+            org.json.JSONObject head = j.optJSONObject("1");
+            org.json.JSONObject info = j.optJSONObject("2");
+            if (head != null && info != null && head.has("4")) {
+                emit(head, info);
+            }
+            org.json.JSONArray names = j.names();
+            if (names == null) return;
+            for (int i = 0; i < names.length(); i++) {
+                Object child = j.opt(names.optString(i));
+                if (child instanceof org.json.JSONObject) {
+                    collect((org.json.JSONObject) child);
+                } else if (child instanceof org.json.JSONArray) {
+                    org.json.JSONArray a = (org.json.JSONArray) child;
+                    for (int m = 0; m < a.length(); m++) {
+                        collect(a.optJSONObject(m));
+                    }
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
+    private static void emit(org.json.JSONObject head, org.json.JSONObject info) {
+        try {
+            long subId = head.optLong("4", -1);
+            if (subId <= 0) return;
+            long uin = head.optLong("1", -1);
+            long random = info.optLong("4", -1);
+
+            long[] seqs = {info.optLong("5", -1), info.optLong("11", -1)};
+
+            if (uin > 0) {
+                for (int i = 0; i < seqs.length; i++) {
+                    long seq = seqs[i];
+                    if (seq <= 0) continue;
+                    SUB_CACHE.put(uin + ":" + seq + ":" + random, subId);
+                    SUB_CACHE.put(uin + ":" + seq, subId);
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
+    public static Long subIdOf(Object record) {
+        try {
+
+            long seq = num(Refl.call(record, "getMsgSeq"));
+            long random = num(Refl.call(record, "getMsgRandom"));
+            long uin = num(Refl.call(record, "getSenderUin"));
+
+            if (seq <= 0) seq = Refl.fieldLong(record, "msgSeq", 0);
+            if (random <= 0) random = Refl.fieldLong(record, "msgRandom", 0);
+            if (uin <= 0) uin = Refl.fieldLong(record, "senderUin", 0);
+
+            if (!diagDone) {
+                diagDone = true;
+                HookLog.i("版本号诊断: seq=" + seq + " random=" + random + " uin=" + uin
+                        + " cls=" + record.getClass().getSimpleName()
+                        + " 缓存=" + SUB_CACHE.size());
+            }
+
+            if (seq <= 0 || uin <= 0) return null;
+
+            Long v = SUB_CACHE.get(uin + ":" + seq + ":" + random);
+            if (v == null) v = SUB_CACHE.get(uin + ":" + seq);
+            return v;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static long num(Object o) {
+        return o instanceof Number ? ((Number) o).longValue() : 0L;
+    }
+
+    private static String versionOf(Object msgItem) {
+        try {
+            Object rec = findRecord(msgItem.getClass(), msgItem, 0);
+            if (rec == null) return null;
+
+            Long sid = subIdOf(rec);
+            if (sid == null || sid <= 0) return null;
+            loadManual();
+            String manual = MANUAL.get(sid);
+            if (manual != null && manual.length() > 0) return manual;
+            FeatureSenderVersion.loadTableStatic();
+            String v = FeatureSenderVersion.lookup(sid);
+            return (v == null || v.length() == 0) ? null : v;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private boolean verOn() {
+        try {
+            return ctx != null && HookConfig.getBoolean(ctx, K_VER, false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     private boolean on() {
         try {
             return ctx != null && HookConfig.getBoolean(ctx, K, false);
@@ -68,6 +275,7 @@ public class FeatureMsgTime extends HookItemBase {
     @Override
     public void entry(ClassLoader cl) {
         hint("发一条消息 / 打开聊天后触发");
+        hookMsgPush(cl);
 
         Class<?> vb = HookApi.findClass(cl, CLS_VB,
                 "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB",
@@ -192,14 +400,34 @@ public class FeatureMsgTime extends HookItemBase {
         }
         ViewGroup rootView = (ViewGroup) holderView;
 
-        String text = formatTime(extractMsgTime(msgItem));
+        String timeText = formatTime(extractMsgTime(msgItem));
+        String verText = verOn() ? versionOf(msgItem) : null;
 
-        FrameLayout wrap = (FrameLayout) findByTag(rootView, TAG_WRAP);
+        ViewGroup wrap = (ViewGroup) findByTag(rootView, TAG_WRAP);
         if (wrap != null) {
-            TextView exist = (TextView) findByTag(wrap, TAG_TIME);
-            if (exist == null) return;
-            exist.setText(text);
-            applyStyle(exist);
+            LinearLayout box = (LinearLayout) findByTag(wrap, TAG_TIME);
+            String mode = layoutMode();
+            String want = mode + "|" + (verText == null ? "0" : "1");
+            if (box != null && want.equals(BOX_MODE.get(box))) {
+                TextView t = (TextView) findByTag(box, TAG_T);
+                TextView v = (TextView) findByTag(box, TAG_V);
+                if (t != null) {
+                    t.setText(timeText);
+                    applyStyle(t, false);
+                }
+                if (v != null) {
+                    boolean show = verText != null && verText.length() > 0;
+                    v.setVisibility(show ? View.VISIBLE : View.GONE);
+                    if (show) {
+                        v.setText("inline".equals(mode) ? "· " + verText : verText);
+                        applyStyle(v, true);
+                    }
+                }
+                return;
+            }
+
+            if (box != null) wrap.removeView(box);
+            fill((LinearLayout) wrap, timeText, verText);
             return;
         }
 
@@ -212,35 +440,250 @@ public class FeatureMsgTime extends HookItemBase {
         ViewGroup bubbleGroup = (ViewGroup) bubble;
         if (bubbleGroup.getChildCount() == 0) return;
 
-        FrameLayout wrapper = new FrameLayout(bubbleGroup.getContext());
+        LinearLayout wrapper = new LinearLayout(bubbleGroup.getContext());
+        wrapper.setOrientation(LinearLayout.VERTICAL);
         wrapper.setTag(TAG_WRAP);
 
         LinearLayout content = new LinearLayout(bubbleGroup.getContext());
         content.setOrientation(LinearLayout.VERTICAL);
+        content.setTag(TAG_CONTENT);
         while (bubbleGroup.getChildCount() > 0) {
             View c = bubbleGroup.getChildAt(0);
             bubbleGroup.removeViewAt(0);
             content.addView(c);
         }
-        wrapper.addView(content, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT));
+        wrapper.addView(content, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        TextView tv = new TextView(bubbleGroup.getContext());
-        tv.setTag(TAG_TIME);
-        tv.setText(text);
-        applyStyle(tv);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
-        lp.gravity = Gravity.RIGHT | Gravity.BOTTOM;
-        lp.rightMargin = dp(4);
-        lp.bottomMargin = dp(2);
-        wrapper.addView(tv, lp);
+        fill(wrapper, timeText, verText);
 
         bubbleGroup.addView(wrapper, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT));
+
+        try {
+            if (manualOn()) bindManual(bubbleGroup, msgItem);
+        } catch (Throwable ignore) {
+        }
+    }
+
+    public static boolean manualOnStatic(android.content.Context c) {
+        try {
+            return c != null && HookConfig.getBoolean(c, K_MANUAL, false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private boolean manualOn() {
+        try {
+            return ctx != null && HookConfig.getBoolean(ctx, K_MANUAL, false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void bindManual(final View bubble, final Object msgItem) {
+        if (LONG_HOOKED.containsKey(bubble)) return;
+        LONG_HOOKED.put(bubble, Boolean.TRUE);
+
+        bubble.setOnTouchListener(new View.OnTouchListener() {
+            private long downAt;
+            private float dx, dy;
+            private Runnable pending;
+
+            private void cancel(View v) {
+                if (pending != null) {
+                    v.removeCallbacks(pending);
+                    pending = null;
+                }
+            }
+
+            @Override
+            public boolean onTouch(final View v, android.view.MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == android.view.MotionEvent.ACTION_DOWN) {
+                    downAt = android.os.SystemClock.uptimeMillis();
+                    dx = e.getX();
+                    dy = e.getY();
+                    cancel(v);
+                    pending = new Runnable() {
+                        @Override
+                        public void run() {
+                            pending = null;
+                            try {
+                                showManualDialog(v.getContext(), msgItem);
+                            } catch (Throwable t) {
+                                HookLog.e("版本标注: 弹窗失败", t);
+                            }
+                        }
+                    };
+                    v.postDelayed(pending, 620);
+                } else if (a == android.view.MotionEvent.ACTION_MOVE) {
+                    if (Math.abs(e.getX() - dx) > 34 || Math.abs(e.getY() - dy) > 34) cancel(v);
+                } else {
+                    cancel(v);
+                }
+                return false;
+            }
+        });
+    }
+
+    public static void showManualDialogPublic(android.content.Context c, Object msgItem) {
+        new FeatureMsgTime().showManualDialog(c, msgItem);
+    }
+
+    private void showManualDialog(final android.content.Context c, final Object msgItem) {
+        Object rec = findRecord(msgItem.getClass(), msgItem, 0);
+        final Long sid = rec == null ? null : subIdOf(rec);
+        String note = (sid == null)
+                ? "这条消息没抓到 SubId，标不了（可以先在聊天里翻一下再看）"
+                : "SubId " + sid + " · 保存后同一个 SubId 的消息都会显示你写的内容";
+        com.cathelperawa.owo.app.ui.CatSheet.inputPair(c, "标注发送者版本",
+                "QQ 版本，例如 9.3.80.42775", "渠道，例如 小米（可留空）", note,
+                new com.cathelperawa.owo.app.ui.CatSheet.OnPair() {
+                    @Override public void run(String ver, String ch) {
+                        try {
+                            if (sid == null || ver == null || ver.length() == 0) return;
+                            String label = "QQ " + ver
+                                    + (ch != null && ch.length() > 0 ? "（" + ch + "渠道）" : "");
+                            MANUAL.put(sid, label);
+                            saveManual();
+                            com.cathelperawa.owo.app.bridge.CatToast.show("已标注：" + label);
+                        } catch (Throwable ignore) {
+                        }
+                    }
+                });
+    }
+
+    private static LinearLayout.LayoutParams lpB(int bottomMargin) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        p.bottomMargin = bottomMargin;
+        return p;
+    }
+
+    private static java.io.File manualFile() {
+        try {
+            return new java.io.File(com.cathelperawa.owo.app.bridge.QQEnv
+                    .appContext().getFilesDir(), "msgtime_manual.json");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static void loadManual() {
+        if (manualLoaded) return;
+        manualLoaded = true;
+        try {
+            java.io.File f = manualFile();
+            if (f == null || !f.exists()) return;
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            in.close();
+            org.json.JSONObject j = new org.json.JSONObject(bo.toString("UTF-8"));
+            org.json.JSONArray ks = j.names();
+            if (ks == null) return;
+            for (int i = 0; i < ks.length(); i++) {
+                String k = ks.optString(i);
+                try {
+                    MANUAL.put(Long.parseLong(k), j.optString(k, ""));
+                } catch (Throwable ignore) {
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
+    private static void saveManual() {
+        try {
+            java.io.File f = manualFile();
+            if (f == null) return;
+            org.json.JSONObject j = new org.json.JSONObject();
+            for (Long k : MANUAL.keySet()) j.put(String.valueOf(k), MANUAL.get(k));
+            java.io.FileOutputStream o = new java.io.FileOutputStream(f, false);
+            o.write(j.toString().getBytes("UTF-8"));
+            o.close();
+        } catch (Throwable ignore) {
+        }
+    }
+
+    private void fill(LinearLayout content, String timeText, String verText) {
+        android.content.Context c = content.getContext();
+        String mode = layoutMode();
+        boolean hasVer = verText != null && verText.length() > 0;
+        boolean stack = hasVer && !"inline".equals(mode);
+
+        LinearLayout box = new LinearLayout(c);
+        box.setTag(TAG_TIME);
+        box.setOrientation(stack ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        box.setGravity(stack ? Gravity.END : Gravity.CENTER_VERTICAL);
+
+        TextView t = new TextView(c);
+        t.setTag(TAG_T);
+        t.setText(timeText);
+        applyStyle(t, false);
+
+        TextView v = new TextView(c);
+        v.setTag(TAG_V);
+        if (hasVer) {
+            v.setText(stack ? verText : "· " + verText);
+            applyStyle(v, true);
+        } else {
+            v.setVisibility(View.GONE);
+        }
+
+        LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        if (stack) {
+            lp1.gravity = Gravity.END;
+            lp2.gravity = Gravity.END;
+        }
+
+        if (stack && "ver_top".equals(mode)) {
+            box.addView(v, lp2);
+            box.addView(t, lp1);
+        } else {
+            box.addView(t, lp1);
+            box.addView(v, lp2);
+        }
+        BOX_MODE.put(box, mode + "|" + (hasVer ? "1" : "0"));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.gravity = Gravity.END;
+        lp.topMargin = dp(2);
+        content.addView(box, lp);
+    }
+
+    private static String layoutMode() {
+        try {
+            String m = com.cathelperawa.owo.app.core.HookConfig.get(
+                    com.cathelperawa.owo.app.bridge.QQEnv.appContext(), K_VER_LAYOUT, "inline");
+            return m == null || m.length() == 0 ? "inline" : m;
+        } catch (Throwable t) {
+            return "inline";
+        }
+    }
+
+    private float verSize() {
+        try {
+            String v = com.cathelperawa.owo.app.core.HookConfig.get(
+                    ctx, K_VER_SIZE, "");
+            if (v != null && v.length() > 0) return Float.parseFloat(v);
+        } catch (Throwable ignore) {
+        }
+        return size();
     }
 
     private static View findByTag(ViewGroup root, String tag) {
@@ -256,13 +699,13 @@ public class FeatureMsgTime extends HookItemBase {
         return null;
     }
 
-    private void applyStyle(TextView tv) {
+    private void applyStyle(TextView tv, boolean isVer) {
         try {
             tv.setTextColor(color());
         } catch (Throwable ignore) {
         }
         try {
-            tv.setTextSize(size());
+            tv.setTextSize(isVer ? verSize() : size());
         } catch (Throwable ignore) {
         }
     }

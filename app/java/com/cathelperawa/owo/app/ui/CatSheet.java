@@ -31,6 +31,10 @@ public final class CatSheet {
         void run(int index, String label);
     }
 
+    public interface OnPair {
+        void run(String a, String b);
+    }
+
     public interface OnText {
         void run(String text);
     }
@@ -611,4 +615,101 @@ public final class CatSheet {
         for (int i = 0; i < items.length; i++) out[i] = (i + 1) + ". " + items[i];
         return out;
     }
+
+    public static void inputPair(final Context anyCtx, final String title,
+                                 final String hint1, final String hint2,
+                                 final String note, final OnPair cb) {
+        final Activity act = actOf(anyCtx);
+        if (act == null) return;
+        act.runOnUiThread(new Runnable() {
+            @Override public void run() {
+                try {
+                    final Dialog dlg = base(act);
+                    final float d = act.getResources().getDisplayMetrics().density;
+                    LinearLayout card = card(act, d);
+
+                    card.addView(title(act, d, title), titleLp(d));
+
+                    if (note != null && note.length() > 0) {
+                        TextView n = new TextView(act);
+                        n.setText(note);
+                        n.setTextSize(11);
+                        n.setTextColor(0xFF97A9C0);
+                        n.setLineSpacing((int) (2 * d), 1f);
+                        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT);
+                        nlp.bottomMargin = (int) (10 * d);
+                        card.addView(n, nlp);
+                    }
+
+                    final EditText et1 = pairInput(act, d, hint1);
+                    LinearLayout.LayoutParams e1 = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    e1.bottomMargin = (int) (9 * d);
+                    card.addView(et1, e1);
+
+                    final EditText et2 = pairInput(act, d, hint2);
+                    LinearLayout.LayoutParams e2 = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    e2.bottomMargin = (int) (14 * d);
+                    card.addView(et2, e2);
+
+                    LinearLayout buttons = new LinearLayout(act);
+                    buttons.setOrientation(LinearLayout.HORIZONTAL);
+
+                    TextView cancel = ghost(act, d, "取消");
+                    cancel.setOnClickListener(new View.OnClickListener() {
+                        @Override public void onClick(View v) {
+                            dlg.dismiss();
+                        }
+                    });
+                    TextView ok = pink(act, d, "保存");
+                    ok.setOnClickListener(new View.OnClickListener() {
+                        @Override public void onClick(View v) {
+                            String a = et1.getText() == null ? "" : et1.getText().toString().trim();
+                            String b = et2.getText() == null ? "" : et2.getText().toString().trim();
+                            dlg.dismiss();
+                            try {
+                                cb.run(a, b);
+                            } catch (Throwable ignore) {
+                            }
+                        }
+                    });
+                    LinearLayout.LayoutParams b1 = new LinearLayout.LayoutParams(0,
+                            ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    b1.rightMargin = (int) (6 * d);
+                    LinearLayout.LayoutParams b2 = new LinearLayout.LayoutParams(0,
+                            ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    b2.leftMargin = (int) (6 * d);
+                    buttons.addView(cancel, b1);
+                    buttons.addView(ok, b2);
+                    card.addView(buttons);
+
+                    show(act, dlg, card, 0f);
+                } catch (Throwable ignore) {
+                }
+            }
+        });
+    }
+
+    private static EditText pairInput(Activity act, float d, String hint) {
+        EditText et = new EditText(act);
+        et.setHint(hint == null ? "" : hint);
+        et.setTextSize(13);
+        et.setTextColor(C_TITLE);
+        et.setHintTextColor(0xFFB3C0D2);
+        et.setSingleLine(true);
+        et.setInputType(InputType.TYPE_CLASS_TEXT);
+        et.setPadding((int) (14 * d), (int) (11 * d), (int) (14 * d), (int) (11 * d));
+        GradientDrawable eg = new GradientDrawable();
+        eg.setColor(0xB3FFFFFF);
+        eg.setCornerRadius(14 * d);
+        eg.setStroke((int) d, 0x66C9D6E8);
+        et.setBackgroundDrawable(eg);
+        return et;
+    }
+
 }

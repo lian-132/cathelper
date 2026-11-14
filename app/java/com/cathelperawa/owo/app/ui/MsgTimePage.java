@@ -29,7 +29,11 @@ public final class MsgTimePage extends Page {
 
     private static final float[] SIZES = {8f, 10f, 12f, 14f};
 
+    private static final String SAMPLE_VER = "QQ 9.3.35.39695 · 应用宝";
+
     private TextView previewTime;
+    private TextView previewVer;
+    private LinearLayout previewBox;
 
     private int color;
     private String format;
@@ -64,9 +68,13 @@ public final class MsgTimePage extends Page {
         bubble.setPadding(dp(12), dp(9), dp(12), dp(6));
         bubble.addView(text("这就是效果喵～", 14, 0xFF43587A, false, dp(2)));
 
+        previewBox = new LinearLayout(ctx);
+        previewBox.setOrientation(LinearLayout.VERTICAL);
         previewTime = new TextView(ctx);
-        previewTime.setGravity(Gravity.END);
-        bubble.addView(previewTime, wrapWrap());
+        previewTime.setGravity(Gravity.START);
+        previewVer = new TextView(ctx);
+        previewVer.setGravity(Gravity.START);
+        bubble.addView(previewBox, wrapWrap());
         bubbleRow.addView(bubble, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -189,6 +197,155 @@ public final class MsgTimePage extends Page {
         sizeRow.addView(sizeBar, sl);
         root.addView(sizeRow, matchWrap(dp(11)));
 
+        root.addView(sectionTitle("版本排版", "版本号和时间的上下 / 左右关系"));
+        final String[][] LAYOUTS = {
+                {"inline", "同行", "时间 · 版本"},
+                {"ver_top", "版本在上", "版本\n时间"},
+                {"time_top", "时间在上", "时间\n版本"},
+        };
+        LinearLayout layRow = new LinearLayout(ctx);
+        layRow.setOrientation(LinearLayout.HORIZONTAL);
+        final TextView[] layChips = new TextView[LAYOUTS.length];
+        String curLay = cfgGetS(FeatureMsgTime.K_VER_LAYOUT, "inline");
+        for (int i = 0; i < LAYOUTS.length; i++) {
+            final int idx = i;
+            TextView chip = text(LAYOUTS[i][1] + "\n" + LAYOUTS[i][2], 12,
+                    LAYOUTS[i][0].equals(curLay) ? 0xFFE85D9C : 0xFF7F90A6, true, 0);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(0, dp(9), 0, dp(9));
+            chip.setLineSpacing(dp(1), 1f);
+            chip.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    press(v);
+                    cfgSetS(FeatureMsgTime.K_VER_LAYOUT, LAYOUTS[idx][0]);
+                    for (int k = 0; k < layChips.length; k++) {
+                        layChips[k].setTextColor(k == idx ? 0xFFE85D9C : 0xFF7F90A6);
+                    }
+                    refreshPreview();
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            lp.rightMargin = dp(8);
+            chip.setLayoutParams(lp);
+            layChips[i] = chip;
+            layRow.addView(chip);
+        }
+        root.addView(layRow, matchWrap(dp(11)));
+
+        root.addView(sectionTitle("版本字号", "只影响版本号那一行，时间字号在上面"));
+        LinearLayout vsRow = new LinearLayout(ctx);
+        vsRow.setOrientation(LinearLayout.HORIZONTAL);
+        vsRow.setGravity(Gravity.CENTER_VERTICAL);
+        final float[] vSize = {verSize()};
+        final TextView vsLabel = text(((int) vSize[0]) + " 号", 13, 0xFFE85D9C, true, 0);
+        vsLabel.setMinWidth(dp(52));
+        vsRow.addView(vsLabel);
+        SkinSeek vsBar = catSeek(14, Math.round(vSize[0]) - 6, false, new SkinSeek.OnChange() {
+            @Override public void onChanged(int v) {
+                vSize[0] = 6 + v;
+                vsLabel.setText(((int) vSize[0]) + " 号");
+                refreshPreview();
+            }
+            @Override public void onFinished(int v) {
+                cfgSetS(FeatureMsgTime.K_VER_SIZE, String.valueOf(vSize[0]));
+            }
+        });
+        LinearLayout.LayoutParams vsl = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        vsl.leftMargin = dp(12);
+        vsRow.addView(vsBar, vsl);
+        root.addView(vsRow, matchWrap(dp(11)));
+
+        root.addView(sectionTitle("附加信息", "版本号沿用上面的颜色和字号"));
+        LinearLayout verCard = whiteCard(dp(18), 0xD9FFFFFF);
+        LinearLayout verRow = new LinearLayout(ctx);
+        verRow.setOrientation(LinearLayout.HORIZONTAL);
+        verRow.setGravity(Gravity.CENTER_VERTICAL);
+        verRow.setPadding(dp(16), dp(12), dp(14), dp(12));
+
+        LinearLayout verBox = new LinearLayout(ctx);
+        verBox.setOrientation(LinearLayout.VERTICAL);
+        verBox.addView(text("同时显示发送者版本", 15, 0xFF43587A, true, dp(2)));
+        verBox.addView(text("在时间后面追一句对方用的 QQ / TIM 版本号", 11, 0xFF8496AE, false, 0));
+        verRow.addView(verBox, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        final SwitchBox verSw = new SwitchBox(ctx,
+                "true".equalsIgnoreCase(cfgGetS(FeatureMsgTime.K_VER, "false")));
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(dp(52), dp(30));
+        vp.leftMargin = dp(10);
+        verRow.addView(verSw, vp);
+        verSw.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                boolean z = !"true".equalsIgnoreCase(cfgGetS(FeatureMsgTime.K_VER, "false"));
+                cfgSetS(FeatureMsgTime.K_VER, String.valueOf(z));
+                verSw.setChecked(z);
+                refreshPreview();
+            }
+        });
+        verCard.addView(verRow);
+        root.addView(verCard, matchWrap(dp(11)));
+
+        LinearLayout manCard = whiteCard(dp(18), 0xD9FFFFFF);
+        LinearLayout manRow = new LinearLayout(ctx);
+        manRow.setOrientation(LinearLayout.HORIZONTAL);
+        manRow.setGravity(Gravity.CENTER_VERTICAL);
+        manRow.setPadding(dp(16), dp(12), dp(14), dp(12));
+
+        LinearLayout manBox = new LinearLayout(ctx);
+        manBox.setOrientation(LinearLayout.VERTICAL);
+        manBox.addView(text("长按消息手动标注", 15, 0xFF43587A, true, dp(2)));
+        manBox.addView(text("遇到认不出的版本，长按消息填版本和渠道", 11, 0xFF8496AE, false, 0));
+        manRow.addView(manBox, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        final SwitchBox manSw = new SwitchBox(ctx,
+                "true".equalsIgnoreCase(cfgGetS(FeatureMsgTime.K_MANUAL, "false")));
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(52), dp(30));
+        mp.leftMargin = dp(10);
+        manRow.addView(manSw, mp);
+        manSw.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                boolean z = !"true".equalsIgnoreCase(cfgGetS(FeatureMsgTime.K_MANUAL, "false"));
+                cfgSetS(FeatureMsgTime.K_MANUAL, String.valueOf(z));
+                manSw.setChecked(z);
+                toast(z ? "已打开，长按任意消息可标注" : "已关闭");
+            }
+        });
+        manCard.addView(manRow);
+        root.addView(manCard, matchWrap(dp(11)));
+
+        root.addView(sectionTitle("版本库", "点开看当前收录的全部版本号"));
+        LinearLayout libCard = whiteCard(dp(18), 0xD9FFFFFF);
+        LinearLayout libRow = new LinearLayout(ctx);
+        libRow.setOrientation(LinearLayout.HORIZONTAL);
+        libRow.setGravity(Gravity.CENTER_VERTICAL);
+        libRow.setPadding(dp(16), dp(13), dp(16), dp(13));
+
+        LinearLayout libBox = new LinearLayout(ctx);
+        libBox.setOrientation(LinearLayout.VERTICAL);
+        libBox.addView(text("已知版本号", 15, 0xFF43587A, true, dp(2)));
+        final int total = com.cathelperawa.owo.app.feature.FeatureSenderVersion.verCount();
+        libBox.addView(text("共 " + total + " 条 · 点开查看全部", 11, 0xFF8496AE, false, 0));
+        libRow.addView(libBox, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        libRow.addView(text("›", 22, 0xFFB0BDD1, true, 0));
+        libCard.addView(libRow);
+        libCard.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                press(v);
+                String[] all = com.cathelperawa.owo.app.feature.FeatureSenderVersion
+                        .allVersions();
+                com.cathelperawa.owo.app.ui.CatSheet.pick(ctx, "已知版本号 · " + all.length + " 条",
+                        all, new com.cathelperawa.owo.app.ui.CatSheet.OnPick() {
+                            @Override public void run(int index, String label) {
+                            }
+                        });
+            }
+        });
+        root.addView(libCard, matchWrap(dp(11)));
+
         TextView tip = text("改完直接去聊天里看，不用重启 " + com.cathelperawa.owo.app.core.Host.name(), 11, 0xFFA8B4C4, false, 0);
         tip.setGravity(Gravity.CENTER);
         LinearLayout tipRow = new LinearLayout(ctx);
@@ -219,16 +376,50 @@ public final class MsgTimePage extends Page {
         v.setBackgroundDrawable(d);
     }
 
+    private float verSize() {
+        try {
+            String v = cfgGetS(FeatureMsgTime.K_VER_SIZE, "");
+            if (v != null && v.length() > 0) return Float.parseFloat(v);
+        } catch (Throwable ignore) {
+        }
+        return cfgFloat(FeatureMsgTime.K_SIZE, 10f);
+    }
+
     private void refreshPreview() {
-        if (previewTime == null) return;
+        if (previewBox == null || previewTime == null) return;
+
+        String body;
+        try {
+            body = new SimpleDateFormat(format, Locale.getDefault()).format(new Date());
+        } catch (Throwable t) {
+            body = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+        }
+
+        boolean showVer = "true".equalsIgnoreCase(cfgGetS(FeatureMsgTime.K_VER, "false"));
+        String mode = cfgGetS(FeatureMsgTime.K_VER_LAYOUT, "inline");
+        boolean stack = showVer && !"inline".equals(mode);
+
         previewTime.setTextColor(color);
         previewTime.setTextSize(size);
-        try {
-            previewTime.setText(new SimpleDateFormat(format, Locale.getDefault())
-                    .format(new Date()));
-        } catch (Throwable t) {
-            previewTime.setText(new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                    .format(new Date()));
+        previewTime.setText(body);
+
+        previewVer.setTextColor(color);
+        previewVer.setTextSize(verSize());
+        previewVer.setText(stack ? SAMPLE_VER : "· " + SAMPLE_VER);
+
+        previewBox.removeAllViews();
+        previewBox.setOrientation(stack ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+
+        if (!showVer) {
+            previewBox.addView(previewTime, wrapWrap());
+            return;
+        }
+        if (stack && "ver_top".equals(mode)) {
+            previewBox.addView(previewVer, wrapWrap());
+            previewBox.addView(previewTime, wrapWrap());
+        } else {
+            previewBox.addView(previewTime, wrapWrap());
+            previewBox.addView(previewVer, wrapWrap());
         }
     }
 

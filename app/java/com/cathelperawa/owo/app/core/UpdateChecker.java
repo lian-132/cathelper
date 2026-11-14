@@ -42,8 +42,16 @@ public final class UpdateChecker {
     }
     private static final String KEY_LAST_CHECK = "last_check_ms";
 
-    private static final String SOURCE =
-            "https://raw.githubusercontent.com/lian-132/cathelper/main/latest.json";
+    private static final String[] SOURCES = {
+            "https://raw.githubusercontent.com/lian-132/cathelper/main/latest.json",
+            "https://ghproxy.net/https://raw.githubusercontent.com/lian-132/cathelper/main/latest.json",
+            "https://raw.gitmirror.com/lian-132/cathelper/main/latest.json",
+
+            "https://cdn.jsdelivr.net/gh/lian-132/cathelper@main/latest.json"
+    };
+
+    private static final String API_URL =
+            "https://api.github.com/repos/lian-132/cathelper/contents/latest.json?ref=main";
 
     private static final String[] PUB_KEYS = {
             "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqjB7OPJEA9mja0s2NPG+xp7yQY62El9tj8PeT9VLEMRibyvEslNbUaiNHsaHII9haXGjRdNUZgUmmgFWYCxaAnVziavf9KgcceTo7oZTW8llvsgw9jnFZNiWrB7Qk767jVwgcr+1B2bEDfl62x562jUTdIVNBxmTgrOgF4IrWJFThiON6Oi0yYtYKrqRYlhyXrL+P2BCwBR5c98J5uQgMwKkUmms+sZHIjNZJo+AmZJ7Gis1TmwZdNPXYUqvpn+b0EXOEVNAkBjR+JIqWP9GRbBqyudTwFiAJ+FkWrRTXeUmYH18/GHqsitBBa1o1LvhCP/ZZ6jqHN+pmHoUWVoGTwIDAQAB"
@@ -133,6 +141,7 @@ public final class UpdateChecker {
     }
 
     private static void startDownload(final Context ctx, final String url, final String name) {
+        final String fn = (name == null || name.length() == 0) ? "cathelper.apk" : name;
         try {
             if (android.os.Build.VERSION.SDK_INT >= 33
                     && ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
@@ -141,17 +150,100 @@ public final class UpdateChecker {
             }
         } catch (Throwable ignore) {
         }
+
+        if (openDownloaded(ctx, fn)) {
+            com.cathelperawa.owo.app.bridge.CatToast.show("已经下好了：" + fn);
+            return;
+        }
+
         try {
-            com.cathelperawa.owo.app.pan.PanProvider.Link l =
-                    new com.cathelperawa.owo.app.pan.PanProvider.Link();
-            l.url = url;
-            l.filename = name == null ? "" : name;
-            l.ua = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36";
-            com.cathelperawa.owo.app.pan.PanDl.enqueue(ctx, l, name);
-            com.cathelperawa.owo.app.bridge.CatToast.show("开始下载：" + name + "，进度看通知栏");
+            android.app.DownloadManager dm = (android.app.DownloadManager)
+                    ctx.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm == null) throw new IllegalStateException("没有 DownloadManager");
+            String u = mirrorUrl(url);
+            android.app.DownloadManager.Request req =
+                    new android.app.DownloadManager.Request(android.net.Uri.parse(u));
+            req.setTitle(fn);
+            req.setDescription("猫娘助手更新");
+            req.setMimeType("application/vnd.android.package-archive");
+            req.setNotificationVisibility(
+                    android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setDestinationInExternalPublicDir(
+                    android.os.Environment.DIRECTORY_DOWNLOADS, fn);
+            req.setAllowedOverMetered(true);
+            req.setAllowedOverRoaming(true);
+            req.addRequestHeader("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36");
+            dm.enqueue(req);
+            com.cathelperawa.owo.app.bridge.CatToast.show("开始下载：" + fn + "，进度看通知栏");
         } catch (Throwable t) {
-            HookLog.w("UpdateChecker download: " + t);
-            ExtLink.open(ctx, url);
+            HookLog.w("UpdateChecker download(DM): " + t);
+            try {
+                com.cathelperawa.owo.app.pan.PanProvider.Link l =
+                        new com.cathelperawa.owo.app.pan.PanProvider.Link();
+                l.url = url;
+                l.filename = fn;
+                l.ua = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36";
+                com.cathelperawa.owo.app.pan.PanDl.enqueue(ctx, l, fn);
+                com.cathelperawa.owo.app.bridge.CatToast.show("开始下载：" + fn + "，进度看通知栏");
+            } catch (Throwable t2) {
+                HookLog.w("UpdateChecker download(pan): " + t2);
+                ExtLink.open(ctx, url);
+            }
+        }
+    }
+
+    private static String mirrorUrl(String u) {
+        if (u == null) return null;
+        if (u.contains("raw.githubusercontent.com/")) {
+            try {
+                String path = u.substring(u.indexOf("raw.githubusercontent.com/")
+                        + "raw.githubusercontent.com/".length());
+                int q = path.indexOf('?');
+                if (q > 0) path = path.substring(0, q);
+                String[] seg = path.split("/", 3);
+                if (seg.length == 3) {
+                    return "https://cdn.jsdelivr.net/gh/" + seg[0] + "/" + seg[1]
+                            + "@" + seg[2];
+                }
+            } catch (Throwable ignore) {
+            }
+        }
+        return u;
+    }
+
+    private static boolean openDownloaded(Context ctx, String fn) {
+        try {
+            android.app.DownloadManager dm = (android.app.DownloadManager)
+                    ctx.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm == null) return false;
+            android.app.DownloadManager.Query q = new android.app.DownloadManager.Query();
+            q.setFilterByStatus(android.app.DownloadManager.STATUS_SUCCESSFUL);
+            android.database.Cursor cur = dm.query(q);
+            if (cur == null) return false;
+            boolean opened = false;
+            while (cur.moveToNext()) {
+                String title = cur.getString(cur.getColumnIndex("title"));
+                if (title == null || !title.equals(fn)) continue;
+                long id = cur.getLong(cur.getColumnIndex("_id"));
+                try {
+                    android.net.Uri u = dm.getUriForDownloadedFile(id);
+                    if (u == null) continue;
+                    android.content.Intent it = new android.content.Intent(
+                            android.content.Intent.ACTION_VIEW);
+                    it.setDataAndType(u, "application/vnd.android.package-archive");
+                    it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    it.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    ctx.startActivity(it);
+                    opened = true;
+                    break;
+                } catch (Throwable ignore) {
+                }
+            }
+            cur.close();
+            return opened;
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -203,6 +295,7 @@ public final class UpdateChecker {
             p.sub = name + "（" + code + "）";
             p.body = log;
             p.actionLabel = "更新";
+            p.image = o.optString("image", "");
             final String dlUrl = o.optString("apkDownload", "");
             final String dlName = "猫娘助手-" + name + ".apk";
             p.action = new Runnable() {
@@ -292,6 +385,12 @@ public final class UpdateChecker {
                 try {
                     if (single) {
                         com.cathelperawa.owo.app.ui.NoticePagerDialog.Page p0 = pages.get(0);
+                        if (p0.buttons != null && p0.buttons.size() > 0) {
+
+                            com.cathelperawa.owo.app.ui.AnnouncementDialog.showWithButtons(
+                                    act, p0.title, p0.body, p0.image, p0.buttons, null);
+                            return;
+                        }
                         com.cathelperawa.owo.app.ui.AnnouncementDialog.show(act,
                                 p0.title, p0.body, p0.image, p0.actionLabel,
                                 new com.cathelperawa.owo.app.ui.AnnouncementDialog.OnOk() {
@@ -304,7 +403,7 @@ public final class UpdateChecker {
                     if (singleUpd) {
                         com.cathelperawa.owo.app.ui.NoticePagerDialog.Page p0 = pages.get(0);
                         com.cathelperawa.owo.app.ui.UpdateDialog.show(act,
-                                name, code, p0.body,
+                                name, code, p0.body, p0.image,
                                 new com.cathelperawa.owo.app.ui.UpdateDialog.OnUpdate() {
                                     @Override public void run() {
                                         if (p0.action != null) p0.action.run();
@@ -329,12 +428,90 @@ public final class UpdateChecker {
     }
 
     private static String fetch() {
+
+        String s = fetchViaApi();
+        if (s != null) {
+            HookLog.i("UpdateChecker: 拉取成功 via api.github.com");
+            return s;
+        }
+
+        for (int i = 0; i < SOURCES.length; i++) {
+            String one = fetchOne(SOURCES[i] + (SOURCES[i].contains("?") ? "&" : "?")
+                    + "t=" + System.currentTimeMillis());
+            if (one != null) {
+                HookLog.i("UpdateChecker: 拉取成功 via " + host(SOURCES[i]));
+                return one;
+            }
+        }
+        HookLog.w("UpdateChecker: 全部镜像都失败");
+        return null;
+    }
+
+    private static String fetchViaApi() {
         HttpURLConnection c = null;
         try {
-            String u = SOURCE + (SOURCE.contains("?") ? "&" : "?") + "t=" + System.currentTimeMillis();
+            c = (HttpURLConnection) new URL(API_URL).openConnection();
+            c.setConnectTimeout(6000);
+            c.setReadTimeout(8000);
+            c.setRequestMethod("GET");
+            c.setRequestProperty("Accept", "application/vnd.github+json");
+            c.setRequestProperty("User-Agent", "cathelper-update");
+            if (c.getResponseCode() != 200) return null;
+            String body = drain(c.getInputStream(), 512 * 1024);
+            c.disconnect();
+            c = null;
+            if (body == null || body.indexOf("\"content\"") < 0) return null;
+            org.json.JSONObject o = new org.json.JSONObject(body);
+            String enc = o.optString("encoding", "");
+            String content = o.optString("content", "");
+            if (content.length() == 0) return null;
+            String text;
+            if ("base64".equals(enc)) {
+                text = new String(android.util.Base64.decode(content,
+                        android.util.Base64.DEFAULT), "UTF-8");
+            } else {
+                text = content;
+            }
+            text = text.trim();
+            return text.startsWith("{") ? text : null;
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            if (c != null) try { c.disconnect(); } catch (Throwable ignore) {}
+        }
+    }
+
+    private static String drain(InputStream in, int max) {
+        if (in == null) return null;
+        try {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                bo.write(buf, 0, n);
+                if (bo.size() > max) break;
+            }
+            in.close();
+            return new String(bo.toByteArray(), "UTF-8");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static String host(String u) {
+        try {
+            return new URL(u).getHost();
+        } catch (Throwable t) {
+            return u;
+        }
+    }
+
+    private static String fetchOne(String u) {
+        HttpURLConnection c = null;
+        try {
             c = (HttpURLConnection) new URL(u).openConnection();
             c.setConnectTimeout(6000);
-            c.setReadTimeout(6000);
+            c.setReadTimeout(8000);
             c.setRequestMethod("GET");
             c.setRequestProperty("User-Agent", "cathelper-update");
             c.setRequestProperty("Cache-Control", "no-cache");

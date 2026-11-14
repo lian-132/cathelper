@@ -101,6 +101,7 @@ public class FeatureChatTools extends HookItemBase {
     private static final String T_MEDIA = "存素材";
 
     private static final String T_VOICE = "存语音";
+    private static final String T_VER = "标注版本";
     private static Map<Object, Object[]> MENU_ITEMS;
 
     @Override
@@ -1053,6 +1054,10 @@ public class FeatureChatTools extends HookItemBase {
 
             if (hasPtt(rec)) insertMenu(menuD, c, msgItem, items, T_VOICE);
 
+            if (com.cathelperawa.owo.app.feature.FeatureMsgTime.manualOnStatic(c)) {
+                insertMenu(menuD, c, msgItem, items, T_VER);
+            }
+
             injectScriptMenus(menuD, c, msgItem, items);
         } catch (Throwable t) {
             HookLog.e("菜单注入异常", t);
@@ -1169,6 +1174,8 @@ public class FeatureChatTools extends HookItemBase {
                 if (T_EDIT.equals(title)) openEditDialog(c, msgItem);
 
                 else if (T_VOICE.equals(title)) saveVoice(c, msgItem);
+                else if (T_VER.equals(title))
+                    com.cathelperawa.owo.app.feature.FeatureMsgTime.showManualDialogPublic(c, msgItem);
                 else if (title != null && title.startsWith(
                         com.cathelperawa.owo.app.script.ScriptMenuRegistry.PREFIX)) {
 

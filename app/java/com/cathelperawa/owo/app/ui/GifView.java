@@ -62,11 +62,17 @@ public final class GifView extends View {
                             still = fb;
                             ratio = (float) fb.getHeight() / (float) fb.getWidth();
                         } else {
-                            return;
+
+                            ratio = 0.5625f;
                         }
                         loaded = true;
                         startMs = System.currentTimeMillis();
                         requestLayout();
+                        try {
+                            if (getParent() instanceof android.view.View) {
+                                ((android.view.View) getParent()).requestLayout();
+                            }
+                        } catch (Throwable ignore) {}
                         invalidate();
                     }
                 });
@@ -78,7 +84,7 @@ public final class GifView extends View {
         int w = MeasureSpec.getSize(wSpec);
         if (w <= 0) w = getResources().getDisplayMetrics().widthPixels;
         if (!loaded || ratio <= 0f) {
-            setMeasuredDimension(w, 0);
+            setMeasuredDimension(w, (int) (150 * getResources().getDisplayMetrics().density));
             return;
         }
         float dens = getResources().getDisplayMetrics().density;
@@ -125,11 +131,65 @@ public final class GifView extends View {
     }
 
     private static byte[] fetch(String url) {
+
+        byte[] b = (url != null && url.contains("cdn.jsdelivr.net")) ? null : fetchOne(url);
+        if (b != null) return b;
+        String[] alts = mirrors(url);
+        if (alts != null) {
+            for (int i = 0; i < alts.length; i++) {
+                b = fetchOne(alts[i]);
+                if (b != null) return b;
+            }
+        }
+        return fetchOne(url);
+    }
+
+    private static String[] mirrors(String u) {
+        if (u == null) return null;
+        try {
+            String user, repo, ref, rest;
+            String p;
+            if (u.contains("raw.githubusercontent.com/")) {
+                p = u.substring(u.indexOf("raw.githubusercontent.com/") + 26);
+                int q = p.indexOf('?');
+                if (q > 0) p = p.substring(0, q);
+                String[] seg = p.split("/", 4);
+                if (seg.length < 4) return null;
+                user = seg[0]; repo = seg[1]; ref = seg[2]; rest = seg[3];
+            } else if (u.contains("cdn.jsdelivr.net/gh/")) {
+                p = u.substring(u.indexOf("cdn.jsdelivr.net/gh/") + 20);
+                int q = p.indexOf('?');
+                if (q > 0) p = p.substring(0, q);
+                String[] seg = p.split("/", 3);
+                if (seg.length < 3) return null;
+                user = seg[0];
+                int at = seg[1].indexOf('@');
+                if (at <= 0) return null;
+                repo = seg[1].substring(0, at);
+                ref = seg[1].substring(at + 1);
+                rest = seg[2];
+            } else {
+                return null;
+            }
+            String rawPath = user + "/" + repo + "/" + ref + "/" + rest;
+            return new String[]{
+                    "https://raw.githubusercontent.com/" + rawPath,
+                    "https://ghproxy.net/https://raw.githubusercontent.com/" + rawPath,
+                    "https://raw.gitmirror.com/" + rawPath,
+                    "https://cdn.jsdelivr.net/gh/" + user + "/" + repo + "@" + ref + "/" + rest
+            };
+        } catch (Throwable ignore) {
+        }
+        return null;
+    }
+
+    private static byte[] fetchOne(String url) {
+
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL(url).openConnection();
             c.setConnectTimeout(8000);
-            c.setReadTimeout(10000);
+            c.setReadTimeout(15000);
             c.setRequestMethod("GET");
             c.setRequestProperty("User-Agent", "cathelper-update");
             c.setInstanceFollowRedirects(true);

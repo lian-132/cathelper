@@ -28,11 +28,17 @@ public final class UpdateDialog {
 
     public static void show(final Activity a, String versionName, int versionCode,
                             String changelog, final OnUpdate onUpdate) {
-        show(a, versionName, versionCode, changelog, onUpdate, null);
+        show(a, versionName, versionCode, changelog, null, onUpdate, null);
     }
 
     public static void show(final Activity a, String versionName, int versionCode,
                             String changelog, final OnUpdate onUpdate, final Runnable onClose) {
+        show(a, versionName, versionCode, changelog, null, onUpdate, onClose);
+    }
+
+    public static void show(final Activity a, String versionName, int versionCode,
+                            String changelog, String imageUrl,
+                            final OnUpdate onUpdate, final Runnable onClose) {
         if (a == null || a.isFinishing()) return;
         final float d = a.getResources().getDisplayMetrics().density;
         final Dialog dlg = new Dialog(a, android.R.style.Theme_Translucent_NoTitleBar);
@@ -105,6 +111,19 @@ public final class UpdateDialog {
         llp.topMargin = dp(d, 14);
         llp.bottomMargin = dp(d, 12);
         card.addView(line, llp);
+
+        if (imageUrl != null && imageUrl.length() > 0) {
+            final GifView gv = new GifView(a);
+            GradientDrawable ig = new GradientDrawable();
+            ig.setColor(0x0F8A9CB5);
+            ig.setCornerRadius(dp(d, 12));
+            gv.setBackgroundDrawable(ig);
+            gv.setClipToOutline(true);
+            LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(-1, -2);
+            glp.bottomMargin = dp(d, 12);
+            card.addView(gv, glp);
+            gv.load(imageUrl);
+        }
 
         TextView label = new TextView(a);
         label.setText("更新内容");
